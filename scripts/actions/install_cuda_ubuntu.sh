@@ -1,3 +1,4 @@
+#!/bin/bash
 # @todo - better / more robust parsing of inputs from env vars.
 ## -------------------
 ## Constants
