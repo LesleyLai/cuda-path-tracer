@@ -1,5 +1,6 @@
 #pragma once
 
+#include "path_tracer.hpp"
 #include "shader.hpp"
 #include "window.hpp"
 
@@ -13,6 +14,8 @@ class App {
   GLuint pbo_ = 0;
   cudaGraphicsResource* pbo_cuda_resource_ = nullptr;
   ShaderProgram program_;
+
+  PathTracer path_tracer_;
 
   GLuint position_location_ = 0;
   GLuint tex_coords_location_ = 1;

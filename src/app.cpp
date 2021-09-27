@@ -1,5 +1,5 @@
 #include "app.hpp"
-#include "kernel.hpp"
+#include "path_tracer.hpp"
 
 #include <cuda_gl_interop.h>
 #include <cuda_runtime_api.h>
@@ -60,11 +60,11 @@ App::App()
   cudaGetDeviceProperties(&device_prop, gpu_device);
 
   const std::string window_title =
-      fmt::format("CUDA OpenGL Boilerplate [compute capability {}.{}]",
+      fmt::format("CUDA Path Tracer [compute capability {}.{}]",
                   device_prop.major, device_prop.minor);
 
   if (!glfwInit()) {
-    fmt::print(stderr, "Error: Cannot initialize Glfw context");
+    fmt::print(stderr, "Error: Cannot initialize GLFW context");
     std::exit(1);
   }
   window_ = Window(800, 800, window_title.c_str());
@@ -80,6 +80,8 @@ App::App()
   program_.set_int("u_image", 0);
   program_.use();
   glActiveTexture(GL_TEXTURE0);
+
+  path_tracer_.create_buffers(window_.width(), window_.height());
 }
 
 App::~App()
@@ -134,10 +136,7 @@ void App::run_CUDA(std::chrono::system_clock::duration time_since_start)
   cudaGraphicsResourceGetMappedPointer(reinterpret_cast<void**>(&dptr), &size,
                                        pbo_cuda_resource_);
 
-  const float time_since_start_s =
-      std::chrono::duration<float>(time_since_start).count();
-  execute_kernel(dptr, time_since_start_s, window_.width(), window_.height());
-
+  path_tracer_.path_trace(dptr, window_.width(), window_.height());
   cudaGraphicsUnmapResources(1, &pbo_cuda_resource_);
 }
 

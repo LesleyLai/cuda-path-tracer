@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.17)
 
-project(cuda_opengl_boilerplate VERSION 0.0.0 LANGUAGES CXX CUDA)
+project(cuda_path_tracer VERSION 0.0.0 LANGUAGES CXX CUDA)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" "${CMAKE_BINARY_DIR}")
 
