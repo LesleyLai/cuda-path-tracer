@@ -1,11 +1,12 @@
 #include "path_tracer.hpp"
+#include <cstddef>
 #include <cstdio>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include <device_launch_parameters.h>
 
+#include <cmath>
 #include <fmt/format.h>
-#include <math.h>
 
 #include <glm/gtx/compatibility.hpp>
 
@@ -17,20 +18,6 @@ void check_CUDA_error(std::string_view msg)
   if (cudaSuccess != err) {
     fmt::print(stderr, "Cuda error: {}: {}.\n", msg, cudaGetErrorString(err));
     exit(EXIT_FAILURE);
-  }
-}
-
-#define CUDA_CHECK(ans)                                                        \
-  {                                                                            \
-    cuda_check_impl((ans), __FILE__, __LINE__);                                \
-  }
-void cuda_check_impl(cudaError_t code, const char* file, int line,
-                     bool abort = true)
-{
-  if (code != cudaSuccess) {
-    fmt::print(stderr, "CUDA error: {} {} {}\n", cudaGetErrorString(code), file,
-               line);
-    if (abort) exit(code);
   }
 }
 
@@ -101,11 +88,6 @@ __global__ void create_visualization_kernel(uchar4* pbo, Ray* rays,
 
 PathTracer::PathTracer() = default;
 
-PathTracer::~PathTracer()
-{
-  cudaFree(rays_);
-}
-
 void PathTracer::path_trace(uchar4* PBOpos, unsigned int width,
                             unsigned int height)
 {
@@ -117,12 +99,12 @@ void PathTracer::path_trace(uchar4* PBOpos, unsigned int width,
   const auto blocks_y = (height + block_size - 1) / block_size;
   const dim3 full_blocks_per_grid(blocks_x, blocks_y);
 
-  raygen_kernel<<<full_blocks_per_grid, threads_per_block>>>(rays_, width,
-                                                             height);
+  raygen_kernel<<<full_blocks_per_grid, threads_per_block>>>(rays_.data(),
+                                                             width, height);
   check_CUDA_error("Raygen Kernel");
 
   create_visualization_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-      PBOpos, rays_, width, height);
+      PBOpos, rays_.data(), width, height);
 
   cudaDeviceSynchronize();
 
@@ -131,7 +113,7 @@ void PathTracer::path_trace(uchar4* PBOpos, unsigned int width,
 
 void PathTracer::create_buffers(unsigned int width, unsigned int height)
 {
-  const std::size_t pixel_count = width * height;
-  CUDA_CHECK(cudaMalloc(&rays_, pixel_count * sizeof(Ray)));
+  const auto pixel_count = static_cast<const std::size_t>(width) * height;
+  rays_ = cuda::make_buffer<Ray>(pixel_count);
   CUDA_CHECK(cudaDeviceSynchronize());
 }
