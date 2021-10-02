@@ -77,7 +77,6 @@ App::App()
                  .load("shaders/pass.vert.glsl", Shader::Type::Vertex)
                  .load("shaders/pass.frag.glsl", Shader::Type::Fragment)
                  .build();
-  program_.set_int("u_image", 0);
   program_.use();
   glActiveTexture(GL_TEXTURE0);
 
@@ -124,7 +123,7 @@ void App::init_VAO()
                GL_STATIC_DRAW);
 }
 
-void App::run_CUDA(std::chrono::system_clock::duration time_since_start)
+void App::run_CUDA()
 {
   // Map OpenGL buffer object for writing from CUDA on a single GPU
   // No data is moved (Win & Linux). When mapped to CUDA, OpenGL should not use
@@ -153,11 +152,9 @@ void App::render() const
 
 void App::main_loop()
 {
-  const auto start_time = std::chrono::system_clock::now();
-
   while (!window_.should_close()) {
     window_.poll_events();
-    run_CUDA(std::chrono::system_clock::now() - start_time);
+    run_CUDA();
     render();
     window_.swap_buffers();
   }

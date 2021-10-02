@@ -4,8 +4,6 @@
 #include "shader.hpp"
 #include "window.hpp"
 
-#include <chrono>
-
 #include <cuda_gl_interop.h>
 #include <cuda_runtime_api.h>
 
@@ -34,6 +32,6 @@ public:
 private:
   void init_VAO();
 
-  void run_CUDA(std::chrono::system_clock::duration time_since_start);
+  void run_CUDA();
   void render() const;
 };
