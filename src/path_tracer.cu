@@ -5,8 +5,11 @@
 #include <device_launch_parameters.h>
 
 #include <fmt/format.h>
+#include <math.h>
 
 #include <glm/gtx/compatibility.hpp>
+
+#include "sphere.hpp"
 
 void check_CUDA_error(std::string_view msg)
 {
@@ -65,7 +68,6 @@ __device__ auto get_background_color(Ray r) -> glm::vec3
 }
 
 __global__ void create_visualization_kernel(uchar4* pbo, Ray* rays,
-                                            float time_since_start_s,
                                             unsigned int width,
                                             unsigned int height)
 {
@@ -73,18 +75,27 @@ __global__ void create_visualization_kernel(uchar4* pbo, Ray* rays,
   const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
   const auto index = x + (y * width);
 
-  const glm::vec3 background_color = get_background_color(rays[index]);
+  const auto ray = rays[index];
+
+  float t = 0;
+  glm::vec3 point = {};
+  glm::vec3 normal = {};
+
+  const glm::vec3 color =
+      ray_sphere_intersection_test(rays[index], glm::vec3{0.0f, 0.0f, -1.0f},
+                                   0.5f, t, point, normal)
+          ? glm::vec3(1, 0, 0)
+          : get_background_color(rays[index]);
 
   constexpr auto normalize_color = [](float v) {
     return static_cast<char>(v * 255.99f);
   };
 
   if (x <= width && y <= height) {
-    // Each thread writes one pixel location in the texture (textel)
     pbo[index].w = 1;
-    pbo[index].x = normalize_color(background_color.x);
-    pbo[index].y = normalize_color(background_color.y);
-    pbo[index].z = normalize_color(background_color.z);
+    pbo[index].x = normalize_color(color.x);
+    pbo[index].y = normalize_color(color.y);
+    pbo[index].z = normalize_color(color.z);
   }
 }
 
@@ -111,7 +122,7 @@ void PathTracer::path_trace(uchar4* PBOpos, unsigned int width,
   check_CUDA_error("Raygen Kernel");
 
   create_visualization_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-      PBOpos, rays_, 0, width, height);
+      PBOpos, rays_, width, height);
 
   cudaDeviceSynchronize();
 

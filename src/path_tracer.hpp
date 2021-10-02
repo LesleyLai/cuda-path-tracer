@@ -6,10 +6,7 @@
 
 #include <memory>
 
-struct Ray {
-  glm::vec3 origin;
-  glm::vec3 direction;
-};
+#include "ray.hpp"
 
 class PathTracer {
   Ray* rays_ = nullptr;

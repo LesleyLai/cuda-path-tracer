@@ -2,6 +2,10 @@ find_package(CUDAToolkit REQUIRED)
 
 find_package(fmt REQUIRED)
 find_package(glm REQUIRED)
+
+add_library(common INTERFACE sphere.hpp ray.hpp)
+target_link_libraries(common INTERFACE fmt::fmt glm::glm)
+
 find_package(glfw3 REQUIRED)
 find_package(glad REQUIRED)
 
@@ -15,7 +19,8 @@ add_executable(app
         window.hpp
         app.hpp
         app.cpp)
-target_link_libraries(app PRIVATE fmt::fmt glm::glm glfw::glfw glad::glad CUDA::cudart)
+target_link_libraries(app PRIVATE
+        common glfw::glfw glad::glad CUDA::cudart)
 set_property(TARGET app PROPERTY CUDA_ARCHITECTURES OFF)
 
 add_custom_target(assets
