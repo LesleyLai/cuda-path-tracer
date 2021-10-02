@@ -35,6 +35,11 @@ public:
   {
     return ptr_;
   }
+
+  [[nodiscard]] auto data() const -> const T*
+  {
+    return ptr_;
+  }
 };
 
 template <typename T>

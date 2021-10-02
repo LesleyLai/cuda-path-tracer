@@ -3,10 +3,9 @@
 #include <fmt/core.h>
 
 Window::Window(int width, int height, const char* title)
-    : width_{width}, height_{height}, window_{glfwCreateWindow(
-                                          static_cast<int>(width),
-                                          static_cast<int>(height), title,
-                                          nullptr, nullptr)}
+    : window_{glfwCreateWindow(static_cast<int>(width),
+                               static_cast<int>(height), title, nullptr,
+                               nullptr)}
 {
   if (!window_) {
     fmt::print(stderr, "Error: Failed to create a GLFW Window");
@@ -42,14 +41,7 @@ Window::~Window()
     glfwTerminate();
   }
 }
-auto Window::width() const -> int
-{
-  return width_;
-}
-auto Window::height() const -> int
-{
-  return height_;
-}
+
 void Window::swap_buffers()
 {
   glfwSwapBuffers(window_);

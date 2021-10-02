@@ -6,8 +6,8 @@
 #include "ray.hpp"
 
 [[nodiscard]] __host__ __device__ auto inline ray_sphere_intersection_test(
-    Ray r, glm::vec3 center, float radius, float t_out, glm::vec3 point_out,
-    glm::vec3 normal_out) -> bool
+    Ray r, glm::vec3 center, float radius, float& t_out, glm::vec3& point_out,
+    glm::vec3& normal_out) -> bool
 {
   const auto oc = r.origin - center;
 

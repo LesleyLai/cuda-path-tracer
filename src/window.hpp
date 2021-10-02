@@ -8,8 +8,6 @@
 #include <utility>
 
 class Window {
-  int width_ = 0;
-  int height_ = 0;
   GLFWwindow* window_ = nullptr;
 
 public:
@@ -18,25 +16,33 @@ public:
 
   Window(const Window&) = delete;
   auto operator=(const Window&) = delete;
-  Window(Window&& other) noexcept
-      : width_{std::exchange(other.width_, {})},
-        height_{std::exchange(other.height_, {})}, window_{std::exchange(
-                                                       other.window_, {})}
-  {
-  }
+  Window(Window&& other) noexcept : window_{std::exchange(other.window_, {})} {}
   auto operator=(Window&& other) & noexcept -> Window&
   {
-    width_ = std::exchange(other.width_, {});
-    height_ = std::exchange(other.height_, {});
     window_ = std::exchange(other.window_, {});
     return *this;
   }
 
   ~Window();
 
-  [[nodiscard]] auto width() const -> int;
+  [[nodiscard]] auto get() -> GLFWwindow*
+  {
+    return window_;
+  }
 
-  [[nodiscard]] auto height() const -> int;
+  [[nodiscard]] auto width() const -> int
+  {
+    int width, height;
+    glfwGetWindowSize(window_, &width, &height);
+    return width;
+  }
+
+  [[nodiscard]] auto height() const -> int
+  {
+    int width, height;
+    glfwGetWindowSize(window_, &width, &height);
+    return height;
+  }
 
   void swap_buffers();
 

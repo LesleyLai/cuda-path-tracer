@@ -28,6 +28,8 @@ __global__ void raygen_kernel(Ray* rays, unsigned int width,
   const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
   const auto index = x + (y * width);
 
+  if (x >= width || y >= height) { return; }
+
   const float aspect_ratio =
       static_cast<float>(width) / static_cast<float>(height);
 
@@ -49,8 +51,8 @@ __global__ void raygen_kernel(Ray* rays, unsigned int width,
 
 __device__ auto get_background_color(Ray r) -> glm::vec3
 {
-  glm::vec3 unit_direction = glm::normalize(r.direction);
-  auto t = 0.5f * (unit_direction.y + 1.0f);
+  const glm::vec3 unit_direction = glm::normalize(r.direction);
+  const auto t = 0.5f * (unit_direction.y + 1.0f);
   return glm::lerp(glm::vec3(0.5, 0.7, 1.0), glm::vec3(1.0, 1.0, 1.0), t);
 }
 
@@ -62,6 +64,8 @@ __global__ void create_visualization_kernel(uchar4* pbo, Ray* rays,
   const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
   const auto index = x + (y * width);
 
+  if (x >= width || y >= height) { return; }
+
   const auto ray = rays[index];
 
   float t = 0;
@@ -71,7 +75,7 @@ __global__ void create_visualization_kernel(uchar4* pbo, Ray* rays,
   const glm::vec3 color =
       ray_sphere_intersection_test(ray, glm::vec3{0.0f, 0.0f, -1.0f}, 0.5f, t,
                                    point, normal)
-          ? glm::vec3(1, 0, 0)
+          ? ((normal + 1.0f) * 0.5f)
           : get_background_color(ray);
 
   constexpr auto normalize_color = [](float v) {
@@ -91,7 +95,6 @@ PathTracer::PathTracer() = default;
 void PathTracer::path_trace(uchar4* PBOpos, unsigned int width,
                             unsigned int height)
 {
-  // set up crucial magic
   constexpr unsigned int block_size = 16;
   const dim3 threads_per_block(block_size, block_size);
 
@@ -105,10 +108,9 @@ void PathTracer::path_trace(uchar4* PBOpos, unsigned int width,
 
   create_visualization_kernel<<<full_blocks_per_grid, threads_per_block>>>(
       PBOpos, rays_.data(), width, height);
-
-  cudaDeviceSynchronize();
-
   check_CUDA_error("Visualization kernel");
+
+  CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 void PathTracer::create_buffers(unsigned int width, unsigned int height)

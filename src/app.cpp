@@ -8,26 +8,26 @@
 
 namespace {
 
-[[nodiscard]] auto init_texture(const Window& window) -> GLuint
+[[nodiscard]] auto init_texture(int width, int height) -> GLuint
 {
   GLuint image = 0;
   glGenTextures(1, &image);
   glBindTexture(GL_TEXTURE_2D, image);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, window.width(), window.height(), 0,
-               GL_BGRA, GL_UNSIGNED_BYTE, nullptr);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_BGRA,
+               GL_UNSIGNED_BYTE, nullptr);
   return image;
 }
 
-[[nodiscard]] auto create_pbo(const Window& window,
+[[nodiscard]] auto create_pbo(int width, int height,
                               cudaGraphicsResource** pbo_cuda_resource)
     -> GLuint
 {
   GLuint pbo = 0;
 
   // set up vertex data parameter
-  const auto texels_count = window.width() * window.height();
+  const auto texels_count = width * height;
   const auto values_count = texels_count * 4;
   const auto size_tex_data =
       static_cast<GLsizeiptr>(sizeof(GLubyte) * values_count);
@@ -44,7 +44,16 @@ namespace {
   return pbo;
 }
 
-} // namespace
+void destroy_pbo(cudaGraphicsResource* pbo_cuda_resource, GLuint pbo)
+{
+  if (pbo != 0) {
+    cudaGraphicsUnregisterResource(pbo_cuda_resource);
+    glBindBuffer(GL_ARRAY_BUFFER, pbo);
+    glDeleteBuffers(1, &pbo);
+  }
+}
+
+} // anonymous namespace
 
 App::App()
 {
@@ -69,9 +78,28 @@ App::App()
   }
   window_ = Window(800, 800, window_title.c_str());
 
+  glfwSetWindowUserPointer(window_.get(), this);
+  glfwSetFramebufferSizeCallback(
+      window_.get(), [](GLFWwindow* window, int width, int height) {
+        App* app = static_cast<App*>(glfwGetWindowUserPointer(window));
+
+        destroy_pbo(app->pbo_cuda_resource_, app->pbo_);
+        app->pbo_ = create_pbo(width, height, &app->pbo_cuda_resource_);
+
+        if (app->image_) { glDeleteTextures(1, &app->image_); }
+        app->image_ = init_texture(width, height);
+
+        app->path_tracer_.create_buffers(width, height);
+
+        glViewport(0, 0, width, height);
+      });
+
   init_VAO();
-  image_ = init_texture(window_);
-  pbo_ = create_pbo(window_, &pbo_cuda_resource_);
+
+  int width = window_.width();
+  int height = window_.height();
+  image_ = init_texture(width, height);
+  pbo_ = create_pbo(width, height, &pbo_cuda_resource_);
 
   program_ = ShaderBuilder{}
                  .load("shaders/pass.vert.glsl", Shader::Type::Vertex)
@@ -85,11 +113,7 @@ App::App()
 
 App::~App()
 {
-  if (pbo_) {
-    cudaGraphicsUnregisterResource(pbo_cuda_resource_);
-    glBindBuffer(GL_ARRAY_BUFFER, pbo_);
-    glDeleteBuffers(1, &pbo_);
-  }
+  destroy_pbo(pbo_cuda_resource_, pbo_);
   if (image_) { glDeleteTextures(1, &image_); }
 }
 
@@ -132,11 +156,11 @@ void App::run_CUDA()
   cudaGraphicsMapResources(1, &pbo_cuda_resource_);
 
   std::size_t size = 0;
-  cudaGraphicsResourceGetMappedPointer(reinterpret_cast<void**>(&dptr), &size,
-                                       pbo_cuda_resource_);
+  CUDA_CHECK(cudaGraphicsResourceGetMappedPointer(
+      reinterpret_cast<void**>(&dptr), &size, pbo_cuda_resource_));
 
   path_tracer_.path_trace(dptr, window_.width(), window_.height());
-  cudaGraphicsUnmapResources(1, &pbo_cuda_resource_);
+  CUDA_CHECK(cudaGraphicsUnmapResources(1, &pbo_cuda_resource_));
 }
 
 void App::render() const
