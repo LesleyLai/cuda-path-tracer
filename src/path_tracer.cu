@@ -69,10 +69,10 @@ __global__ void create_visualization_kernel(uchar4* pbo, Ray* rays,
   glm::vec3 normal = {};
 
   const glm::vec3 color =
-      ray_sphere_intersection_test(rays[index], glm::vec3{0.0f, 0.0f, -1.0f},
-                                   0.5f, t, point, normal)
+      ray_sphere_intersection_test(ray, glm::vec3{0.0f, 0.0f, -1.0f}, 0.5f, t,
+                                   point, normal)
           ? glm::vec3(1, 0, 0)
-          : get_background_color(rays[index]);
+          : get_background_color(ray);
 
   constexpr auto normalize_color = [](float v) {
     return static_cast<char>(v * 255.99f);

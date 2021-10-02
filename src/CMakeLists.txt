@@ -22,6 +22,12 @@ add_executable(app
 target_link_libraries(app PRIVATE
         common glfw::glfw glad::glad CUDA::cudart)
 set_property(TARGET app PROPERTY CUDA_ARCHITECTURES OFF)
+target_compile_options(
+        app PRIVATE
+        $<$<COMPILE_LANGUAGE:CUDA>:
+        -Xcudafe --diag_suppress=esa_on_defaulted_function_ignored
+        >
+)
 
 add_custom_target(assets
         COMMAND ${CMAKE_COMMAND} -E copy_directory

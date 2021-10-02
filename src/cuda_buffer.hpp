@@ -13,8 +13,8 @@ template <typename T> class Buffer {
 
 public:
   Buffer() = default;
-  explicit(false) Buffer(T* ptr) : ptr_{ptr} {}
-  explicit(false) Buffer(std::nullptr_t) {}
+  /* explicit(false) */ Buffer(T* ptr) : ptr_{ptr} {}
+  /* explicit(false) */ Buffer(std::nullptr_t) {}
 
   ~Buffer()
   {
