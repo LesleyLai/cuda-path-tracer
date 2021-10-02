@@ -5,9 +5,19 @@
 
 #include "ray.hpp"
 
+struct HitRecord {
+  float t = 0;
+  glm::vec3 point = {};
+  glm::vec3 normal = {};
+};
+
+struct Sphere {
+  glm::vec3 center = {};
+  float radius = 0;
+};
+
 [[nodiscard]] __host__ __device__ auto inline ray_sphere_intersection_test(
-    Ray r, glm::vec3 center, float radius, float& t_out, glm::vec3& point_out,
-    glm::vec3& normal_out) -> bool
+    Ray r, glm::vec3 center, float radius, HitRecord& record) -> bool
 {
   const auto oc = r.origin - center;
 
@@ -23,9 +33,9 @@
   const auto t2 = (-b + sqrt_delta) / (2 * a);
 
   auto hit_record_from_t = [&](float t) {
-    t_out = t;
-    point_out = r(t);
-    normal_out = (point_out - center) / radius;
+    record.t = t;
+    record.point = r(t);
+    record.normal = (record.point - center) / radius;
     return true;
   };
 

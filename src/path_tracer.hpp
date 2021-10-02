@@ -4,17 +4,16 @@
 
 #include <glm/glm.hpp>
 
-#include <memory>
-
 #include "cuda_buffer.hpp"
 #include "ray.hpp"
+#include "sphere.hpp"
 
 class PathTracer {
-  cuda::Buffer<Ray> rays_ = nullptr;
+  cuda::Buffer<Sphere> dev_spheres_;
 
 public:
   PathTracer();
 
-  void create_buffers(unsigned int width, unsigned int height);
+  void create_buffers();
   void path_trace(uchar4* PBOpos, unsigned int width, unsigned int height);
 };

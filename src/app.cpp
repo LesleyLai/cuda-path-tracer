@@ -90,8 +90,6 @@ App::App()
         if (app->image_) { glDeleteTextures(1, &app->image_); }
         app->image_ = init_texture(width, height);
 
-        app->path_tracer_.create_buffers(width, height);
-
         glViewport(0, 0, width, height);
       });
 
@@ -109,7 +107,7 @@ App::App()
   program_.use();
   glActiveTexture(GL_TEXTURE0);
 
-  path_tracer_.create_buffers(window_.width(), window_.height());
+  path_tracer_.create_buffers();
 }
 
 App::~App()

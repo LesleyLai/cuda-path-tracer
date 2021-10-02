@@ -10,7 +10,8 @@
 
 #include <glm/gtx/compatibility.hpp>
 
-#include "sphere.hpp"
+static const Sphere spheres[] = {{{0.0f, 0.0f, -1.0f}, 0.5f},
+                                 {{0.0f, -100.5f, -1.0f}, 100.f}};
 
 void check_CUDA_error(std::string_view msg)
 {
@@ -33,13 +34,9 @@ struct Index2D {
   return Index2D{x, y};
 }
 
-__global__ void raygen_kernel(Ray* rays, unsigned int width,
-                              unsigned int height)
+[[nodiscard]] __device__ auto raygen(unsigned int width, unsigned int height,
+                                     unsigned int x, unsigned int y) -> Ray
 {
-  const auto [x, y] = calculate_index_2d();
-  if (x >= width || y >= height) return;
-  const auto index = x + (y * width);
-
   const float aspect_ratio =
       static_cast<float>(width) / static_cast<float>(height);
 
@@ -55,8 +52,8 @@ __global__ void raygen_kernel(Ray* rays, unsigned int width,
 
   const auto u = static_cast<float>(x) / static_cast<float>(width - 1);
   const auto v = static_cast<float>(y) / static_cast<float>(height - 1);
-  rays[index] =
-      Ray{origin, lower_left_corner + u * horizontal + v * vertical - origin};
+  return Ray{origin,
+             lower_left_corner + u * horizontal + v * vertical - origin};
 }
 
 __device__ auto get_background_color(Ray r) -> glm::vec3
@@ -66,28 +63,37 @@ __device__ auto get_background_color(Ray r) -> glm::vec3
   return glm::lerp(glm::vec3(0.5, 0.7, 1.0), glm::vec3(1.0, 1.0, 1.0), t);
 }
 
-__global__ void create_visualization_kernel(uchar4* pbo, Ray* rays,
-                                            unsigned int width,
-                                            unsigned int height)
+__global__ void path_tracing_kernel(uchar4* pbo, Sphere* spheres,
+                                    std::size_t sphere_count,
+                                    unsigned int width, unsigned int height)
 {
   const auto [x, y] = calculate_index_2d();
   if (x >= width || y >= height) return;
-  const auto index = x + (y * width);
+  const auto index = x + ((height - y) * width);
 
-  const auto ray = rays[index];
+  const auto ray = raygen(width, height, x, y);
 
-  float t = 0;
-  glm::vec3 point = {};
-  glm::vec3 normal = {};
+  HitRecord record;
+  bool hit = false;
+  float t_max = std::numeric_limits<float>::max();
+  for (std::size_t i = 0; i < sphere_count; ++i) {
+    const auto& sphere = spheres[i];
+    HitRecord new_record;
+    if (ray_sphere_intersection_test(ray, sphere.center, sphere.radius,
+                                     new_record)) {
+      hit = true;
+      if (new_record.t < t_max) {
+        record = new_record;
+        t_max = new_record.t;
+      }
+    }
+  }
 
   const glm::vec3 color =
-      ray_sphere_intersection_test(ray, glm::vec3{0.0f, 0.0f, -1.0f}, 0.5f, t,
-                                   point, normal)
-          ? ((normal + 1.0f) * 0.5f)
-          : get_background_color(ray);
+      hit ? ((record.normal + 1.0f) * 0.5f) : get_background_color(ray);
 
   constexpr auto normalize_color = [](float v) {
-    return static_cast<char>(v * 255.99f);
+    return static_cast<unsigned char>(v * 255.99f);
   };
 
   if (x <= width && y <= height) {
@@ -110,20 +116,18 @@ void PathTracer::path_trace(uchar4* PBOpos, unsigned int width,
   const auto blocks_y = (height + block_size - 1) / block_size;
   const dim3 full_blocks_per_grid(blocks_x, blocks_y);
 
-  raygen_kernel<<<full_blocks_per_grid, threads_per_block>>>(rays_.data(),
-                                                             width, height);
-  check_CUDA_error("Raygen Kernel");
-
-  create_visualization_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-      PBOpos, rays_.data(), width, height);
+  path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
+      PBOpos, dev_spheres_.data(), std::size(spheres), width, height);
   check_CUDA_error("Visualization kernel");
 
   CUDA_CHECK(cudaDeviceSynchronize());
 }
 
-void PathTracer::create_buffers(unsigned int width, unsigned int height)
+void PathTracer::create_buffers()
 {
-  const auto pixel_count = static_cast<const std::size_t>(width) * height;
-  rays_ = cuda::make_buffer<Ray>(pixel_count);
+  dev_spheres_ = cuda::make_buffer<Sphere>(std::size(spheres));
+  CUDA_CHECK(cudaMemcpy(dev_spheres_.data(), spheres,
+                        std::size(spheres) * sizeof(Sphere),
+                        cudaMemcpyHostToDevice));
   CUDA_CHECK(cudaDeviceSynchronize());
 }

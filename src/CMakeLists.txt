@@ -25,6 +25,7 @@ set_property(TARGET app PROPERTY CUDA_ARCHITECTURES OFF)
 target_compile_options(
         app PRIVATE
         $<$<COMPILE_LANGUAGE:CUDA>:
+        --expt-relaxed-constexpr
         -Xcudafe --diag_suppress=esa_on_defaulted_function_ignored
         >
 )
