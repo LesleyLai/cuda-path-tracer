@@ -30,8 +30,8 @@ public:
   void main_loop();
 
 private:
-  void init_VAO();
+  void init_vao();
 
-  void run_CUDA();
+  void run_cuda();
   void render() const;
 };

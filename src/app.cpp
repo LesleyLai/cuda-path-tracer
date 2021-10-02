@@ -4,6 +4,7 @@
 #include <cuda_gl_interop.h>
 #include <cuda_runtime_api.h>
 
+#include <bit>
 #include <fmt/format.h>
 
 namespace {
@@ -94,7 +95,7 @@ App::App()
         glViewport(0, 0, width, height);
       });
 
-  init_VAO();
+  init_vao();
 
   int width = window_.width();
   int height = window_.height();
@@ -117,7 +118,7 @@ App::~App()
   if (image_) { glDeleteTextures(1, &image_); }
 }
 
-void App::init_VAO()
+void App::init_vao()
 {
   static constexpr GLfloat vertices[] = {
       -1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f,
@@ -147,7 +148,7 @@ void App::init_VAO()
                GL_STATIC_DRAW);
 }
 
-void App::run_CUDA()
+void App::run_cuda()
 {
   // Map OpenGL buffer object for writing from CUDA on a single GPU
   // No data is moved (Win & Linux). When mapped to CUDA, OpenGL should not use
@@ -156,8 +157,8 @@ void App::run_CUDA()
   cudaGraphicsMapResources(1, &pbo_cuda_resource_);
 
   std::size_t size = 0;
-  CUDA_CHECK(cudaGraphicsResourceGetMappedPointer(
-      reinterpret_cast<void**>(&dptr), &size, pbo_cuda_resource_));
+  CUDA_CHECK(cudaGraphicsResourceGetMappedPointer(std::bit_cast<void**>(&dptr),
+                                                  &size, pbo_cuda_resource_));
 
   path_tracer_.path_trace(dptr, window_.width(), window_.height());
   CUDA_CHECK(cudaGraphicsUnmapResources(1, &pbo_cuda_resource_));
@@ -178,7 +179,7 @@ void App::main_loop()
 {
   while (!window_.should_close()) {
     window_.poll_events();
-    run_CUDA();
+    run_cuda();
     render();
     window_.swap_buffers();
   }

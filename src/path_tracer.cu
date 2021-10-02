@@ -21,14 +21,24 @@ void check_CUDA_error(std::string_view msg)
   }
 }
 
-__global__ void raygen_kernel(Ray* rays, unsigned int width,
-                              unsigned int height)
+struct Index2D {
+  unsigned int x = 0;
+  unsigned int y = 0;
+};
+
+[[nodiscard]] __device__ auto calculate_index_2d()
 {
   const auto x = (blockIdx.x * blockDim.x) + threadIdx.x;
   const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
-  const auto index = x + (y * width);
+  return Index2D{x, y};
+}
 
-  if (x >= width || y >= height) { return; }
+__global__ void raygen_kernel(Ray* rays, unsigned int width,
+                              unsigned int height)
+{
+  const auto [x, y] = calculate_index_2d();
+  if (x >= width || y >= height) return;
+  const auto index = x + (y * width);
 
   const float aspect_ratio =
       static_cast<float>(width) / static_cast<float>(height);
@@ -60,11 +70,9 @@ __global__ void create_visualization_kernel(uchar4* pbo, Ray* rays,
                                             unsigned int width,
                                             unsigned int height)
 {
-  const auto x = (blockIdx.x * blockDim.x) + threadIdx.x;
-  const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
+  const auto [x, y] = calculate_index_2d();
+  if (x >= width || y >= height) return;
   const auto index = x + (y * width);
-
-  if (x >= width || y >= height) { return; }
 
   const auto ray = rays[index];
 
