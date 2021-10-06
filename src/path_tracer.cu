@@ -5,6 +5,8 @@
 #include <cuda_runtime_api.h>
 #include <device_launch_parameters.h>
 
+#include <thrust/random.h>
+
 #include <cmath>
 #include <fmt/format.h>
 
@@ -27,7 +29,7 @@ struct Index2D {
   unsigned int y = 0;
 };
 
-[[nodiscard]] __device__ auto calculate_index_2d()
+[[nodiscard]] __device__ auto calculate_index_2d() -> Index2D
 {
   const auto x = (blockIdx.x * blockDim.x) + threadIdx.x;
   const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -35,7 +37,8 @@ struct Index2D {
 }
 
 [[nodiscard]] __device__ auto raygen(unsigned int width, unsigned int height,
-                                     unsigned int x, unsigned int y) -> Ray
+                                     unsigned int x, unsigned int y,
+                                     thrust::default_random_engine& rng) -> Ray
 {
   const float aspect_ratio =
       static_cast<float>(width) / static_cast<float>(height);
@@ -50,8 +53,12 @@ struct Index2D {
   const auto lower_left_corner = origin - horizontal / 2.f - vertical / 2.f -
                                  glm::vec3(0, 0, focal_length);
 
-  const auto u = static_cast<float>(x) / static_cast<float>(width - 1);
-  const auto v = static_cast<float>(y) / static_cast<float>(height - 1);
+  thrust::uniform_real_distribution<float> dist(0.0, 1.0);
+
+  const auto u =
+      (static_cast<float>(x) + dist(rng)) / static_cast<float>(width - 1);
+  const auto v =
+      (static_cast<float>(y) + dist(rng)) / static_cast<float>(height - 1);
   return Ray{origin,
              lower_left_corner + u * horizontal + v * vertical - origin};
 }
@@ -63,17 +70,10 @@ __device__ auto get_background_color(Ray r) -> glm::vec3
   return glm::lerp(glm::vec3(0.5, 0.7, 1.0), glm::vec3(1.0, 1.0, 1.0), t);
 }
 
-__global__ void path_tracing_kernel(uchar4* pbo, Sphere* spheres,
-                                    std::size_t sphere_count,
-                                    unsigned int width, unsigned int height)
+__device__ auto ray_scene_intersection_test(Ray ray, Sphere* spheres,
+                                            std::size_t sphere_count,
+                                            HitRecord& record) -> bool
 {
-  const auto [x, y] = calculate_index_2d();
-  if (x >= width || y >= height) return;
-  const auto index = x + ((height - y) * width);
-
-  const auto ray = raygen(width, height, x, y);
-
-  HitRecord record;
   bool hit = false;
   float t_max = std::numeric_limits<float>::max();
   for (std::size_t i = 0; i < sphere_count; ++i) {
@@ -88,19 +88,69 @@ __global__ void path_tracing_kernel(uchar4* pbo, Sphere* spheres,
       }
     }
   }
+  return hit;
+}
 
-  const glm::vec3 color =
-      hit ? ((record.normal + 1.0f) * 0.5f) : get_background_color(ray);
+[[nodiscard]] __device__ auto
+random_in_unit_sphere(thrust::default_random_engine& rng) -> glm::vec3
+{
+  thrust::uniform_real_distribution<float> uni(-1, 1);
+  thrust::normal_distribution<float> normal(0, 1);
 
+  glm::vec3 p{normal(rng), normal(rng), normal(rng)};
+  p = normalize(p);
+
+  const auto c = std::cbrt(uni(rng));
+  return p * c;
+}
+
+__global__ void path_tracing_kernel(uchar4* pbo, glm::vec3* image,
+                                    std::size_t iteration, Sphere* spheres,
+                                    std::size_t sphere_count,
+                                    unsigned int width, unsigned int height)
+{
+  const auto [x, y] = calculate_index_2d();
+  if (x >= width || y >= height) return;
+  const auto index = x + ((height - y) * width);
+
+  thrust::default_random_engine rng(index + iteration);
+
+  // ray gen
+  auto ray = raygen(width, height, x, y, rng);
+
+  // Path tracing
+  glm::vec3 color{1.0f, 1.0f, 1.0f};
+
+  for (int i = 0; i < 50; ++i) {
+    HitRecord record;
+    const bool hit =
+        ray_scene_intersection_test(ray, spheres, sphere_count, record);
+    if (!hit) {
+      color *= get_background_color(ray);
+      break;
+    }
+    const auto new_origin =
+        record.point -
+        0.0001f * glm::sign(dot(ray.direction, record.normal)) * record.normal;
+    const auto new_direction = record.normal + random_in_unit_sphere(rng);
+    ray.origin = new_origin;
+    ray.direction = new_direction;
+    color *= 0.5f;
+  }
+
+  // Final gathering
+  const auto sample_count = static_cast<float>(iteration + 1);
+  image[index] = (image[index] * (sample_count - 1) + color) / sample_count;
+
+  // Visualization
   constexpr auto normalize_color = [](float v) {
-    return static_cast<unsigned char>(v * 255.99f);
+    return static_cast<unsigned char>(glm::clamp(v, 0.f, 1.f) * 255.99f);
   };
-
   if (x <= width && y <= height) {
     pbo[index].w = 1;
-    pbo[index].x = normalize_color(color.x);
-    pbo[index].y = normalize_color(color.y);
-    pbo[index].z = normalize_color(color.z);
+    pbo[index].x = normalize_color(image[index].x);
+    pbo[index].y = normalize_color(image[index].y);
+    pbo[index].z = normalize_color(image[index].z);
   }
 }
 
@@ -117,17 +167,27 @@ void PathTracer::path_trace(uchar4* PBOpos, unsigned int width,
   const dim3 full_blocks_per_grid(blocks_x, blocks_y);
 
   path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-      PBOpos, dev_spheres_.data(), std::size(spheres), width, height);
+      PBOpos, dev_image_.data(), iteration_, dev_spheres_.data(),
+      std::size(spheres), width, height);
   check_CUDA_error("Visualization kernel");
 
   CUDA_CHECK(cudaDeviceSynchronize());
+
+  ++iteration_;
 }
 
-void PathTracer::create_buffers()
+void PathTracer::resize_image(unsigned int width, unsigned int height)
+{
+  iteration_ = 0;
+  dev_image_ = cuda::make_buffer<glm::vec3>(width * height);
+  CUDA_CHECK(cudaDeviceSynchronize());
+}
+
+void PathTracer::create_buffers(unsigned int width, unsigned int height)
 {
   dev_spheres_ = cuda::make_buffer<Sphere>(std::size(spheres));
   CUDA_CHECK(cudaMemcpy(dev_spheres_.data(), spheres,
                         std::size(spheres) * sizeof(Sphere),
                         cudaMemcpyHostToDevice));
-  CUDA_CHECK(cudaDeviceSynchronize());
+  resize_image(width, height);
 }

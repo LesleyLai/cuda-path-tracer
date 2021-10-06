@@ -10,10 +10,15 @@
 
 class PathTracer {
   cuda::Buffer<Sphere> dev_spheres_;
+  cuda::Buffer<glm::vec3> dev_image_;
+
+  std::size_t iteration_ = 0;
 
 public:
   PathTracer();
 
-  void create_buffers();
+  void resize_image(unsigned int width, unsigned int height);
+
+  void create_buffers(unsigned int width, unsigned int height);
   void path_trace(uchar4* PBOpos, unsigned int width, unsigned int height);
 };
