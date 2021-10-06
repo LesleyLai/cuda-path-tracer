@@ -146,6 +146,10 @@ __global__ void path_tracing_kernel(uchar4* pbo, glm::vec3* image,
     ray.direction = glm::normalize(record.normal + random_in_unit_sphere(rng));
     color *= 0.5f;
   }
+  // gamma correction
+  color.x = glm::pow(color.x, 1.f / 2.2f);
+  color.y = glm::pow(color.y, 1.f / 2.2f);
+  color.z = glm::pow(color.z, 1.f / 2.2f);
 
   // Final gathering
   const auto sample_count = static_cast<float>(iteration + 1);
@@ -183,6 +187,11 @@ void PathTracer::path_trace(uchar4* PBOpos, unsigned int width,
   CUDA_CHECK(cudaDeviceSynchronize());
 
   ++iteration_;
+}
+
+void PathTracer::reset()
+{
+  iteration_ = 0;
 }
 
 void PathTracer::resize_image(unsigned int width, unsigned int height)

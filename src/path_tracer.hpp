@@ -17,6 +17,8 @@ class PathTracer {
 public:
   PathTracer();
 
+  void reset();
+
   void resize_image(unsigned int width, unsigned int height);
 
   void create_buffers(unsigned int width, unsigned int height);
