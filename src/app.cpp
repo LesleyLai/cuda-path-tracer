@@ -93,6 +93,19 @@ App::App()
 
         glViewport(0, 0, width, height);
       });
+  glfwSetKeyCallback(window_.get(), [](GLFWwindow* window, int key,
+                                       int /*scancode*/, int action,
+                                       int /*mods*/) {
+    App* app = static_cast<App*>(glfwGetWindowUserPointer(window));
+    if (action == GLFW_PRESS) {
+      switch (key) {
+      case GLFW_KEY_ESCAPE:
+        glfwSetWindowShouldClose(window, GL_TRUE);
+      case GLFW_KEY_SPACE:
+        app->path_tracer_.reset();
+      }
+    }
+  });
 
   init_vao();
 

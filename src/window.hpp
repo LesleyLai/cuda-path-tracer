@@ -47,6 +47,7 @@ public:
   void swap_buffers();
 
   [[nodiscard]] auto should_close() const -> bool;
+  void set_should_close(bool should_close);
 
   void poll_events();
 };

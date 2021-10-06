@@ -13,16 +13,6 @@ Window::Window(int width, int height, const char* title)
     std::exit(1);
   }
   glfwMakeContextCurrent(window_);
-  glfwSetFramebufferSizeCallback(
-      window_, [](GLFWwindow* /*window_*/, int width, int height) {
-        glViewport(0, 0, width, height);
-      });
-  glfwSetKeyCallback(window_, [](GLFWwindow* window, int key, int /*scancode*/,
-                                 int action, int /*mods*/) {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-      glfwSetWindowShouldClose(window, GL_TRUE);
-    }
-  });
   glfwSetErrorCallback([](int error, const char* description) {
     fmt::print(stderr, "Error {}: {}\n", error, description);
     std::fflush(stderr);
@@ -50,6 +40,12 @@ auto Window::should_close() const -> bool
 {
   return glfwWindowShouldClose(window_) != 0;
 }
+
+void Window::set_should_close(bool should_close)
+{
+  glfwSetWindowShouldClose(window_, should_close);
+}
+
 void Window::poll_events()
 {
   glfwPollEvents();
