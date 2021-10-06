@@ -104,6 +104,17 @@ random_in_unit_sphere(thrust::default_random_engine& rng) -> glm::vec3
   return p * c;
 }
 
+__host__ __device__ constexpr unsigned int hash(unsigned int a)
+{
+  a = (a + 0x7ed55d16) + (a << 12);
+  a = (a ^ 0xc761c23c) ^ (a >> 19);
+  a = (a + 0x165667b1) + (a << 5);
+  a = (a + 0xd3a2646c) ^ (a << 9);
+  a = (a + 0xfd7046c5) + (a << 3);
+  a = (a ^ 0xb55a4f09) ^ (a >> 16);
+  return a;
+}
+
 __global__ void path_tracing_kernel(uchar4* pbo, glm::vec3* image,
                                     std::size_t iteration, Sphere* spheres,
                                     std::size_t sphere_count,
@@ -113,7 +124,7 @@ __global__ void path_tracing_kernel(uchar4* pbo, glm::vec3* image,
   if (x >= width || y >= height) return;
   const auto index = x + ((height - y) * width);
 
-  thrust::default_random_engine rng(index + iteration);
+  thrust::default_random_engine rng(hash(hash(index) ^ iteration));
 
   // ray gen
   auto ray = raygen(width, height, x, y, rng);
@@ -129,12 +140,10 @@ __global__ void path_tracing_kernel(uchar4* pbo, glm::vec3* image,
       color *= get_background_color(ray);
       break;
     }
-    const auto new_origin =
+    ray.origin =
         record.point -
         0.0001f * glm::sign(dot(ray.direction, record.normal)) * record.normal;
-    const auto new_direction = record.normal + random_in_unit_sphere(rng);
-    ray.origin = new_origin;
-    ray.direction = new_direction;
+    ray.direction = glm::normalize(record.normal + random_in_unit_sphere(rng));
     color *= 0.5f;
   }
 
