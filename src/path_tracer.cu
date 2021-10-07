@@ -1,4 +1,7 @@
 #include "path_tracer.hpp"
+
+#include "span.hpp"
+
 #include <cstddef>
 #include <cstdio>
 #include <cuda.h>
@@ -9,6 +12,8 @@
 
 #include <cmath>
 #include <fmt/format.h>
+
+#include <iterator>
 
 #include <glm/gtx/compatibility.hpp>
 
@@ -70,14 +75,12 @@ __device__ auto get_background_color(Ray r) -> glm::vec3
   return glm::lerp(glm::vec3(0.5, 0.7, 1.0), glm::vec3(1.0, 1.0, 1.0), t);
 }
 
-__device__ auto ray_scene_intersection_test(Ray ray, Sphere* spheres,
-                                            std::size_t sphere_count,
+__device__ auto ray_scene_intersection_test(Ray ray, Span<const Sphere> spheres,
                                             HitRecord& record) -> bool
 {
   bool hit = false;
   float t_max = std::numeric_limits<float>::max();
-  for (std::size_t i = 0; i < sphere_count; ++i) {
-    const auto& sphere = spheres[i];
+  for (const auto& sphere : spheres) {
     HitRecord new_record;
     if (ray_sphere_intersection_test(ray, sphere.center, sphere.radius,
                                      new_record)) {
@@ -104,7 +107,8 @@ random_in_unit_sphere(thrust::default_random_engine& rng) -> glm::vec3
   return p * c;
 }
 
-__host__ __device__ constexpr unsigned int hash(unsigned int a)
+[[nodiscard]] __host__ __device__ constexpr auto hash(unsigned int a)
+    -> unsigned int
 {
   a = (a + 0x7ed55d16) + (a << 12);
   a = (a ^ 0xc761c23c) ^ (a >> 19);
@@ -116,8 +120,8 @@ __host__ __device__ constexpr unsigned int hash(unsigned int a)
 }
 
 __global__ void path_tracing_kernel(uchar4* pbo, glm::vec3* image,
-                                    std::size_t iteration, Sphere* spheres,
-                                    std::size_t sphere_count,
+                                    std::size_t iteration,
+                                    Span<const Sphere> spheres,
                                     unsigned int width, unsigned int height)
 {
   const auto [x, y] = calculate_index_2d();
@@ -131,11 +135,9 @@ __global__ void path_tracing_kernel(uchar4* pbo, glm::vec3* image,
 
   // Path tracing
   glm::vec3 color{1.0f, 1.0f, 1.0f};
-
   for (int i = 0; i < 50; ++i) {
     HitRecord record;
-    const bool hit =
-        ray_scene_intersection_test(ray, spheres, sphere_count, record);
+    const bool hit = ray_scene_intersection_test(ray, spheres, record);
     if (!hit) {
       color *= get_background_color(ray);
       break;
@@ -180,8 +182,8 @@ void PathTracer::path_trace(uchar4* PBOpos, unsigned int width,
   const dim3 full_blocks_per_grid(blocks_x, blocks_y);
 
   path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-      PBOpos, dev_image_.data(), iteration_, dev_spheres_.data(),
-      std::size(spheres), width, height);
+      PBOpos, dev_image_.data(), iteration_,
+      Span{dev_spheres_.data(), std::size(spheres)}, width, height);
   check_CUDA_error("Visualization kernel");
 
   CUDA_CHECK(cudaDeviceSynchronize());

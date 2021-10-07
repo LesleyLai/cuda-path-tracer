@@ -3,7 +3,7 @@ find_package(CUDAToolkit REQUIRED)
 find_package(fmt REQUIRED)
 find_package(glm REQUIRED)
 
-add_library(common INTERFACE sphere.hpp ray.hpp)
+add_library(common INTERFACE sphere.hpp ray.hpp span.hpp)
 target_link_libraries(common INTERFACE fmt::fmt glm::glm)
 
 find_package(glfw3 REQUIRED)
