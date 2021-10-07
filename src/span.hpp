@@ -1,6 +1,16 @@
 #ifndef CUDA_PATH_TRACER_SPAN_HPP
 #define CUDA_PATH_TRACER_SPAN_HPP
 
+#ifdef __NVCC__
+
+#define HOST_DEVICE __host__ __device__
+
+#else
+
+#define HOST_DEVICE
+
+#endif
+
 template <typename T> struct Span {
   using element_type = T;
   using value_type = std::remove_cv_t<T>;
@@ -19,7 +29,7 @@ private:
 
 public:
   constexpr Span() noexcept = default;
-  __host__ __device__ constexpr Span(pointer first, size_type size) noexcept
+  HOST_DEVICE constexpr Span(pointer first, size_type size) noexcept
       : ptr_{first}, size_{size}
   {
   }
@@ -27,36 +37,33 @@ public:
   template <class U,
             class = std::enable_if_t<!std::is_same_v<T, U> &&
                                      std::is_same_v<std::remove_const_t<T>, U>>>
-  __host__ __device__ constexpr Span(Span<U> other) noexcept
+  HOST_DEVICE constexpr Span(Span<U> other) noexcept
       : ptr_{other.data()}, size_{other.size()}
   {
   }
 
-  [[nodiscard]] __host__ __device__ constexpr auto begin() const noexcept
-      -> iterator
+  [[nodiscard]] HOST_DEVICE constexpr auto begin() const noexcept -> iterator
   {
     return ptr_;
   }
 
-  [[nodiscard]] __host__ __device__ constexpr auto end() const noexcept
-      -> iterator
+  [[nodiscard]] HOST_DEVICE constexpr auto end() const noexcept -> iterator
   {
     return ptr_ + size_;
   }
 
-  [[nodiscard]] __host__ __device__ constexpr auto data() const noexcept
-      -> pointer
+  [[nodiscard]] HOST_DEVICE constexpr auto data() const noexcept -> pointer
   {
     return ptr_;
   }
 
-  [[nodiscard]] __host__ __device__ constexpr auto size() noexcept -> size_type
+  [[nodiscard]] HOST_DEVICE constexpr auto size() const noexcept -> size_type
   {
     return size_;
   }
 
-  [[nodiscard]] __host__ __device__ constexpr auto
-  operator[](size_type index) noexcept -> reference
+  [[nodiscard]] HOST_DEVICE constexpr auto
+  operator[](size_type index) const noexcept -> reference
   {
     assert(index < size_);
     return ptr_[index];

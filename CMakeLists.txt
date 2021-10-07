@@ -11,3 +11,4 @@ include("cmake/conan.cmake")
 run_conan()
 
 add_subdirectory(src)
+add_subdirectory(test)

@@ -5,6 +5,7 @@ find_package(glm REQUIRED)
 
 add_library(common INTERFACE sphere.hpp ray.hpp span.hpp)
 target_link_libraries(common INTERFACE fmt::fmt glm::glm)
+target_include_directories(common INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
 find_package(glfw3 REQUIRED)
 find_package(glad REQUIRED)

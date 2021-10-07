@@ -1,4 +1,5 @@
 [requires]
+catch2/2.13.7
 fmt/8.0.1
 glfw/3.3.2
 glm/0.9.9.8
