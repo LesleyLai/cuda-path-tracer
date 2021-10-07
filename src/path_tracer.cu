@@ -155,18 +155,26 @@ __global__ void path_tracing_kernel(uchar4* pbo, glm::vec3* image,
     // material stuff
     const Material& material = mat[record.material_id];
     switch (material.type) {
-    case Material::Type::Diffuse:
-      ray.direction =
+    case Material::Type::Diffuse: {
+      auto scatter_direction =
           glm::normalize(record.normal + random_in_unit_sphere(rng));
+
+      // Catch degenerated case
+      if (abs(scatter_direction.x) < 1e-8 && abs(scatter_direction.y) < 1e-8 &&
+          abs(scatter_direction.z) < 1e-8) {
+        scatter_direction = record.normal;
+      }
+
+      ray.direction = scatter_direction;
       color *= diffuse_mat[material.index].albedo;
-      break;
+    } break;
     case Material::Type::Metal: {
       const auto metal = metal_mat[material.index];
       const auto reflected = glm::reflect(ray.direction, record.normal);
-      const auto new_direction =
+      const auto scatter_direction =
           reflected + metal.fuzz * random_in_unit_sphere(rng);
-      ray.direction = new_direction;
-      if (dot(new_direction, record.normal) > 0) {
+      ray.direction = scatter_direction;
+      if (dot(scatter_direction, record.normal) > 0) {
         color *= metal.albedo;
       } else {
         color = glm::vec3(0.0, 0.0, 0.0);
