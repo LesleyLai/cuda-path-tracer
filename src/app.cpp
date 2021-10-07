@@ -4,7 +4,6 @@
 #include <cuda_gl_interop.h>
 #include <cuda_runtime_api.h>
 
-#include <bit>
 #include <fmt/format.h>
 
 namespace {
@@ -169,8 +168,8 @@ void App::run_cuda()
   cudaGraphicsMapResources(1, &pbo_cuda_resource_);
 
   std::size_t size = 0;
-  CUDA_CHECK(cudaGraphicsResourceGetMappedPointer(std::bit_cast<void**>(&dptr),
-                                                  &size, pbo_cuda_resource_));
+  CUDA_CHECK(cudaGraphicsResourceGetMappedPointer(
+      reinterpret_cast<void**>(&dptr), &size, pbo_cuda_resource_));
 
   path_tracer_.path_trace(dptr, window_.width(), window_.height());
   CUDA_CHECK(cudaGraphicsUnmapResources(1, &pbo_cuda_resource_));
