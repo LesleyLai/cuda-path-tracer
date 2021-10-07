@@ -20,6 +20,7 @@ struct DiffuseMateral {
 
 struct MetalMaterial {
   glm::vec3 albedo;
+  float fuzz = 0;
 };
 
 class PathTracer {

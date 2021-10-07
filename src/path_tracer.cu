@@ -30,11 +30,11 @@ static constexpr Material mat[] = {{Material::Type::Diffuse, 0},
                                    {Material::Type::Metal, 0},
                                    {Material::Type::Metal, 1}};
 
-static const DiffuseMateral diffuse_mat[] = {{{0.8f, 0.8f, 0.0f}},
+static const DiffuseMateral diffuse_mat[] = {{{0.8, 0.8, 0.0}},
                                              {{0.7, 0.3, 0.3}}};
 
-static const MetalMaterial metal_mat[] = {{{0.8f, 0.8f, 0.8f}},
-                                          {{0.8, 0.6, 0.2}}};
+static const MetalMaterial metal_mat[] = {{{0.8, 0.8, 0.8}, 0.3},
+                                          {{0.8, 0.6, 0.2}, 1.0}};
 
 void check_CUDA_error(std::string_view msg)
 {
@@ -160,10 +160,18 @@ __global__ void path_tracing_kernel(uchar4* pbo, glm::vec3* image,
           glm::normalize(record.normal + random_in_unit_sphere(rng));
       color *= diffuse_mat[material.index].albedo;
       break;
-    case Material::Type::Metal:
-      ray.direction = glm::reflect(ray.direction, record.normal);
-      color *= metal_mat[material.index].albedo;
-      break;
+    case Material::Type::Metal: {
+      const auto metal = metal_mat[material.index];
+      const auto reflected = glm::reflect(ray.direction, record.normal);
+      const auto new_direction =
+          reflected + metal.fuzz * random_in_unit_sphere(rng);
+      ray.direction = new_direction;
+      if (dot(new_direction, record.normal) > 0) {
+        color *= metal.albedo;
+      } else {
+        color = glm::vec3(0.0, 0.0, 0.0);
+      }
+    } break;
     }
   }
   // gamma correction
