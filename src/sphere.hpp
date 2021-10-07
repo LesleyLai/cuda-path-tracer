@@ -9,16 +9,22 @@ struct HitRecord {
   float t = 0;
   glm::vec3 point = {};
   glm::vec3 normal = {};
+  std::size_t material_id = 0;
 };
 
 struct Sphere {
   glm::vec3 center = {};
   float radius = 0;
+  std::size_t materal_id = 0;
 };
 
 [[nodiscard]] __host__ __device__ auto inline ray_sphere_intersection_test(
-    Ray r, glm::vec3 center, float radius, HitRecord& record) -> bool
+    Ray r, Sphere sphere, HitRecord& record) -> bool
 {
+  const auto center = sphere.center;
+  const auto radius = sphere.radius;
+  const auto material_id = sphere.materal_id;
+
   const auto oc = r.origin - center;
 
   const auto a = dot(r.direction, r.direction);
@@ -36,6 +42,7 @@ struct Sphere {
     record.t = t;
     record.point = r(t);
     record.normal = (record.point - center) / radius;
+    record.material_id = material_id;
     return true;
   };
 

@@ -18,8 +18,23 @@
 
 #include <glm/gtx/compatibility.hpp>
 
-static const Sphere spheres[] = {{{0.0f, 0.0f, -1.0f}, 0.5f},
-                                 {{0.0f, -100.5f, -1.0f}, 100.f}};
+static const Sphere spheres[] = {
+    {{0.0f, -100.5f, -1.0f}, 100.f, 0},
+    {{0.0f, 0.0f, -1.0f}, 0.5f, 1},
+    {{-1.0f, 0.0f, -1.0f}, 0.5f, 2},
+    {{1.0f, 0.0f, -1.0f}, 0.5f, 3},
+};
+
+static constexpr Material mat[] = {{Material::Type::Diffuse, 0},
+                                   {Material::Type::Diffuse, 1},
+                                   {Material::Type::Metal, 0},
+                                   {Material::Type::Metal, 1}};
+
+static const DiffuseMateral diffuse_mat[] = {{{0.8f, 0.8f, 0.0f}},
+                                             {{0.7, 0.3, 0.3}}};
+
+static const MetalMaterial metal_mat[] = {{{0.8f, 0.8f, 0.8f}},
+                                          {{0.8, 0.6, 0.2}}};
 
 void check_CUDA_error(std::string_view msg)
 {
@@ -83,8 +98,7 @@ __device__ auto ray_scene_intersection_test(Ray ray, Span<const Sphere> spheres,
   bool hit = false;
   for (const auto& sphere : spheres) {
     HitRecord new_record;
-    if (ray_sphere_intersection_test(ray, sphere.center, sphere.radius,
-                                     new_record)) {
+    if (ray_sphere_intersection_test(ray, sphere, new_record)) {
       if (new_record.t <= t_max && new_record.t >= t_min) {
         hit = true;
         record = new_record;
@@ -110,6 +124,9 @@ __device__ auto ray_scene_intersection_test(Ray ray, Span<const Sphere> spheres,
 __global__ void path_tracing_kernel(uchar4* pbo, glm::vec3* image,
                                     std::size_t iteration,
                                     Span<const Sphere> spheres,
+                                    Span<const Material> mat,
+                                    Span<const DiffuseMateral> diffuse_mat,
+                                    Span<const MetalMaterial> metal_mat,
                                     unsigned int width, unsigned int height)
 {
   const auto [x, y] = calculate_index_2d();
@@ -135,8 +152,19 @@ __global__ void path_tracing_kernel(uchar4* pbo, glm::vec3* image,
     ray.origin =
         record.point -
         0.0001f * glm::sign(dot(ray.direction, record.normal)) * record.normal;
-    ray.direction = glm::normalize(record.normal + random_in_unit_sphere(rng));
-    color *= 0.5f;
+    // material stuff
+    const Material& material = mat[record.material_id];
+    switch (material.type) {
+    case Material::Type::Diffuse:
+      ray.direction =
+          glm::normalize(record.normal + random_in_unit_sphere(rng));
+      color *= diffuse_mat[material.index].albedo;
+      break;
+    case Material::Type::Metal:
+      ray.direction = glm::reflect(ray.direction, record.normal);
+      color *= metal_mat[material.index].albedo;
+      break;
+    }
   }
   // gamma correction
   color.x = glm::pow(color.x, 1.f / 2.2f);
@@ -173,7 +201,10 @@ void PathTracer::path_trace(uchar4* PBOpos, unsigned int width,
 
   path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
       PBOpos, dev_image_.data(), iteration_,
-      Span{dev_spheres_.data(), std::size(spheres)}, width, height);
+      Span{dev_spheres_.data(), std::size(spheres)},
+      Span{dev_mat_.data(), std::size(mat)},
+      Span{dev_diffuse_mat_.data(), std::size(diffuse_mat)},
+      Span{dev_metal_mat_.data(), std::size(metal_mat)}, width, height);
   check_CUDA_error("Visualization kernel");
 
   CUDA_CHECK(cudaDeviceSynchronize());
@@ -193,11 +224,20 @@ void PathTracer::resize_image(unsigned int width, unsigned int height)
   CUDA_CHECK(cudaDeviceSynchronize());
 }
 
+template <typename T>
+[[nodiscard]] auto create_buffer_from_cpu_data(Span<const T> span)
+{
+  cuda::Buffer<T> dev_buffer = cuda::make_buffer<T>(span.size());
+  CUDA_CHECK(cudaMemcpy(dev_buffer.data(), span.data(), span.size() * sizeof(T),
+                        cudaMemcpyHostToDevice));
+  return dev_buffer;
+}
+
 void PathTracer::create_buffers(unsigned int width, unsigned int height)
 {
-  dev_spheres_ = cuda::make_buffer<Sphere>(std::size(spheres));
-  CUDA_CHECK(cudaMemcpy(dev_spheres_.data(), spheres,
-                        std::size(spheres) * sizeof(Sphere),
-                        cudaMemcpyHostToDevice));
+  dev_spheres_ = create_buffer_from_cpu_data(Span{spheres});
+  dev_mat_ = create_buffer_from_cpu_data(Span{mat});
+  dev_diffuse_mat_ = create_buffer_from_cpu_data(Span{diffuse_mat});
+  dev_metal_mat_ = create_buffer_from_cpu_data(Span{metal_mat});
   resize_image(width, height);
 }

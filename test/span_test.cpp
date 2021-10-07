@@ -8,9 +8,9 @@ TEST_CASE("Span test")
   {
     int xs[] = {5, 4, 3, 2, 1};
 
-    AND_GIVEN("A  span construct from that array")
+    AND_GIVEN("A span construct from that array")
     {
-      Span<int> span{xs, std::size(xs)};
+      Span span{xs};
       THEN("Its size should be 5")
       {
         REQUIRE(span.size() == 5);
@@ -42,6 +42,14 @@ TEST_CASE("Span test")
         REQUIRE(cspan.size() == span.size());
         REQUIRE(cspan.data() == span.data());
       }
+    }
+
+    SECTION("Test pointer/size constructor")
+    {
+      const Span span{xs, std::size(xs)};
+      const Span expected{xs};
+      REQUIRE(span.size() == expected.size());
+      REQUIRE(span.data() == expected.data());
     }
   }
 }

@@ -34,6 +34,12 @@ public:
   {
   }
 
+  template <std::size_t N>
+  HOST_DEVICE constexpr Span(element_type (&arr)[N]) noexcept
+      : ptr_{arr}, size_{N}
+  {
+  }
+
   template <class U,
             class = std::enable_if_t<!std::is_same_v<T, U> &&
                                      std::is_same_v<std::remove_const_t<T>, U>>>
@@ -73,5 +79,6 @@ public:
 template <class Itr, class SizeType>
 Span(Itr, SizeType)
     -> Span<std::remove_reference_t<decltype(*std::declval<Itr&>())>>;
+template <class T, std::size_t N> Span(T (&)[N]) -> Span<T>;
 
 #endif // CUDA_PATH_TRACER_SPAN_HPP
