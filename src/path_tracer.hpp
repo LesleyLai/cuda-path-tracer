@@ -9,7 +9,7 @@
 #include "sphere.hpp"
 
 struct Material {
-  enum struct Type { Diffuse, Metal };
+  enum struct Type { Diffuse, Metal, Dielectric };
   Type type = Type::Diffuse;
   std::size_t index = 0;
 };
@@ -23,11 +23,16 @@ struct MetalMaterial {
   float fuzz = 0;
 };
 
+struct DielectricMaterial {
+  float refraction_index = 1.0;
+};
+
 class PathTracer {
   cuda::Buffer<Sphere> dev_spheres_;
   cuda::Buffer<Material> dev_mat_;
   cuda::Buffer<DiffuseMateral> dev_diffuse_mat_;
   cuda::Buffer<MetalMaterial> dev_metal_mat_;
+  cuda::Buffer<DielectricMaterial> dev_dielectric_mat_;
 
   cuda::Buffer<glm::vec3> dev_image_;
 

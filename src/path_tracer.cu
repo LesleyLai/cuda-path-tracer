@@ -27,14 +27,13 @@ static const Sphere spheres[] = {
 
 static constexpr Material mat[] = {{Material::Type::Diffuse, 0},
                                    {Material::Type::Diffuse, 1},
-                                   {Material::Type::Metal, 0},
-                                   {Material::Type::Metal, 1}};
+                                   {Material::Type::Dielectric, 0},
+                                   {Material::Type::Metal, 0}};
 
 static const DiffuseMateral diffuse_mat[] = {{{0.8, 0.8, 0.0}},
-                                             {{0.7, 0.3, 0.3}}};
-
-static const MetalMaterial metal_mat[] = {{{0.8, 0.8, 0.8}, 0.3},
-                                          {{0.8, 0.6, 0.2}, 1.0}};
+                                             {{0.1, 0.2, 0.5}}};
+static const MetalMaterial metal_mat[] = {{{0.8, 0.6, 0.2}, 1.0}};
+static const DielectricMaterial dielectric_mat[] = {{1.5}};
 
 void check_CUDA_error(std::string_view msg)
 {
@@ -121,13 +120,21 @@ __device__ auto ray_scene_intersection_test(Ray ray, Span<const Sphere> spheres,
   return a;
 }
 
-__global__ void path_tracing_kernel(uchar4* pbo, glm::vec3* image,
-                                    std::size_t iteration,
-                                    Span<const Sphere> spheres,
-                                    Span<const Material> mat,
-                                    Span<const DiffuseMateral> diffuse_mat,
-                                    Span<const MetalMaterial> metal_mat,
-                                    unsigned int width, unsigned int height)
+__device__ static auto reflectance(float cosine, float ref_idx) -> float
+{
+  // Use Schlick's approximation for reflectance.
+  auto r0 = (1 - ref_idx) / (1 + ref_idx);
+  r0 = r0 * r0;
+  return r0 + (1 - r0) * pow((1 - cosine), 5);
+}
+
+__global__ void
+path_tracing_kernel(uchar4* pbo, glm::vec3* image, std::size_t iteration,
+                    Span<const Sphere> spheres, Span<const Material> mat,
+                    Span<const DiffuseMateral> diffuse_mat,
+                    Span<const MetalMaterial> metal_mat,
+                    Span<const DielectricMaterial> dielectric_mat,
+                    unsigned int width, unsigned int height)
 {
   const auto [x, y] = calculate_index_2d();
   if (x >= width || y >= height) return;
@@ -151,7 +158,7 @@ __global__ void path_tracing_kernel(uchar4* pbo, glm::vec3* image,
     }
     ray.origin =
         record.point -
-        0.0001f * glm::sign(dot(ray.direction, record.normal)) * record.normal;
+        1e-4f * glm::sign(dot(ray.direction, record.normal)) * record.normal;
     // material stuff
     const Material& material = mat[record.material_id];
     switch (material.type) {
@@ -179,6 +186,28 @@ __global__ void path_tracing_kernel(uchar4* pbo, glm::vec3* image,
       } else {
         color = glm::vec3(0.0, 0.0, 0.0);
       }
+    } break;
+    case Material::Type::Dielectric: {
+      const auto dielectric = dielectric_mat[material.index];
+      const auto refraction_ratio = record.side == HitFaceSide::front
+                                        ? (1.0f / dielectric.refraction_index)
+                                        : dielectric.refraction_index;
+
+      const auto unit_direction = normalize(ray.direction);
+      const float cos_theta = min(dot(-unit_direction, record.normal), 1.0f);
+      const float sin_theta = sqrtf(1.0f - cos_theta * cos_theta);
+
+      const bool cannot_refract = refraction_ratio * sin_theta > 1.0;
+      glm::vec3 direction;
+      thrust::uniform_real_distribution<float> dist(0.0, 1.0);
+      if (cannot_refract ||
+          reflectance(cos_theta, refraction_ratio) > dist(rng)) {
+        direction = reflect(unit_direction, record.normal);
+      } else {
+        direction = refract(unit_direction, record.normal, refraction_ratio);
+      }
+
+      ray = Ray{record.point, direction};
     } break;
     }
   }
@@ -220,7 +249,9 @@ void PathTracer::path_trace(uchar4* PBOpos, unsigned int width,
       Span{dev_spheres_.data(), std::size(spheres)},
       Span{dev_mat_.data(), std::size(mat)},
       Span{dev_diffuse_mat_.data(), std::size(diffuse_mat)},
-      Span{dev_metal_mat_.data(), std::size(metal_mat)}, width, height);
+      Span{dev_metal_mat_.data(), std::size(metal_mat)},
+      Span{dev_dielectric_mat_.data(), std::size(dielectric_mat)}, width,
+      height);
   check_CUDA_error("Visualization kernel");
 
   CUDA_CHECK(cudaDeviceSynchronize());
@@ -255,5 +286,6 @@ void PathTracer::create_buffers(unsigned int width, unsigned int height)
   dev_mat_ = create_buffer_from_cpu_data(Span{mat});
   dev_diffuse_mat_ = create_buffer_from_cpu_data(Span{diffuse_mat});
   dev_metal_mat_ = create_buffer_from_cpu_data(Span{metal_mat});
+  dev_dielectric_mat_ = create_buffer_from_cpu_data(Span{dielectric_mat});
   resize_image(width, height);
 }
