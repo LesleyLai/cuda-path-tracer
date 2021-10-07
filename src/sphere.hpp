@@ -5,11 +5,14 @@
 
 #include "ray.hpp"
 
+enum HitFaceSide : std::uint8_t { front, back };
+
 struct HitRecord {
   float t = 0;
   glm::vec3 point = {};
   glm::vec3 normal = {};
   std::size_t material_id = 0;
+  HitFaceSide side = HitFaceSide::front;
 };
 
 struct Sphere {
@@ -41,7 +44,11 @@ struct Sphere {
   auto hit_record_from_t = [&](float t) {
     record.t = t;
     record.point = r(t);
-    record.normal = (record.point - center) / radius;
+    const auto outward_normal = (record.point - center) / radius;
+    record.side = dot(r.direction, outward_normal) < 0 ? HitFaceSide::front
+                                                       : HitFaceSide::back;
+    record.normal =
+        record.side == HitFaceSide::front ? outward_normal : -outward_normal;
     record.material_id = material_id;
     return true;
   };
