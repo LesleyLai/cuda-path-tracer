@@ -19,7 +19,7 @@ add_executable(app
         window.cpp
         window.hpp
         app.hpp
-        app.cpp cuda_check.hpp cuda_buffer.hpp)
+        app.cpp cuda_check.hpp cuda_buffer.hpp distributions.cuh)
 target_link_libraries(app PRIVATE
         common glfw::glfw glad::glad CUDA::cudart)
 set_property(TARGET app PROPERTY CUDA_ARCHITECTURES OFF)

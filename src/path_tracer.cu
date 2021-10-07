@@ -1,5 +1,6 @@
 #include "path_tracer.hpp"
 
+#include "distributions.cuh"
 #include "span.hpp"
 
 #include <cstddef>
@@ -76,35 +77,22 @@ __device__ auto get_background_color(Ray r) -> glm::vec3
 }
 
 __device__ auto ray_scene_intersection_test(Ray ray, Span<const Sphere> spheres,
+                                            float t_min, float t_max,
                                             HitRecord& record) -> bool
 {
   bool hit = false;
-  float t_max = std::numeric_limits<float>::max();
   for (const auto& sphere : spheres) {
     HitRecord new_record;
     if (ray_sphere_intersection_test(ray, sphere.center, sphere.radius,
                                      new_record)) {
-      hit = true;
-      if (new_record.t < t_max) {
+      if (new_record.t <= t_max && new_record.t >= t_min) {
+        hit = true;
         record = new_record;
         t_max = new_record.t;
       }
     }
   }
   return hit;
-}
-
-[[nodiscard]] __device__ auto
-random_in_unit_sphere(thrust::default_random_engine& rng) -> glm::vec3
-{
-  thrust::uniform_real_distribution<float> uni(-1, 1);
-  thrust::normal_distribution<float> normal(0, 1);
-
-  glm::vec3 p{normal(rng), normal(rng), normal(rng)};
-  p = normalize(p);
-
-  const auto c = std::cbrt(uni(rng));
-  return p * c;
 }
 
 [[nodiscard]] __host__ __device__ constexpr auto hash(unsigned int a)
@@ -137,7 +125,9 @@ __global__ void path_tracing_kernel(uchar4* pbo, glm::vec3* image,
   glm::vec3 color{1.0f, 1.0f, 1.0f};
   for (int i = 0; i < 50; ++i) {
     HitRecord record;
-    const bool hit = ray_scene_intersection_test(ray, spheres, record);
+    float t_max = std::numeric_limits<float>::max();
+    const bool hit =
+        ray_scene_intersection_test(ray, spheres, 1e-5f, t_max, record);
     if (!hit) {
       color *= get_background_color(ray);
       break;
