@@ -4,6 +4,7 @@ fmt/8.0.1
 glfw/3.3.2
 glm/0.9.9.8
 glad/0.1.34
+tl-function-ref/1.0.0
 
 [generators]
 cmake_find_package

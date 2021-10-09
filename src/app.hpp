@@ -1,23 +1,19 @@
 #pragma once
 
 #include "path_tracer.hpp"
-#include "shader.hpp"
 #include "window.hpp"
 
 #include <cuda_gl_interop.h>
 #include <cuda_runtime_api.h>
 
+#include <memory>
+
+class PreviewRenderer;
+
 class App {
   Window window_;
-  GLuint pbo_ = 0;
-  cudaGraphicsResource* pbo_cuda_resource_ = nullptr;
-  ShaderProgram program_;
-
+  std::unique_ptr<PreviewRenderer> preview_;
   PathTracer path_tracer_;
-
-  GLuint position_location_ = 0;
-  GLuint tex_coords_location_ = 1;
-  GLuint image_ = 0;
 
 public:
   App();
@@ -30,8 +26,5 @@ public:
   void main_loop();
 
 private:
-  void init_vao();
-
   void run_cuda();
-  void render() const;
 };

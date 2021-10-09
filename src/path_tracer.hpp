@@ -43,8 +43,13 @@ public:
 
   void reset();
 
+  [[nodiscard]] auto iteration() const noexcept -> std::size_t
+  {
+    return iteration_;
+  }
+
   void resize_image(unsigned int width, unsigned int height);
 
   void create_buffers(unsigned int width, unsigned int height);
-  void path_trace(uchar4* PBOpos, unsigned int width, unsigned int height);
+  void path_trace(uchar4* dev_pbo, unsigned int width, unsigned int height);
 };

@@ -234,7 +234,7 @@ path_tracing_kernel(uchar4* pbo, glm::vec3* image, std::size_t iteration,
 
 PathTracer::PathTracer() = default;
 
-void PathTracer::path_trace(uchar4* PBOpos, unsigned int width,
+void PathTracer::path_trace(uchar4* dev_pbo, unsigned int width,
                             unsigned int height)
 {
   constexpr unsigned int block_size = 16;
@@ -245,7 +245,7 @@ void PathTracer::path_trace(uchar4* PBOpos, unsigned int width,
   const dim3 full_blocks_per_grid(blocks_x, blocks_y);
 
   path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-      PBOpos, dev_image_.data(), iteration_,
+      dev_pbo, dev_image_.data(), iteration_,
       Span{dev_spheres_.data(), std::size(spheres)},
       Span{dev_mat_.data(), std::size(mat)},
       Span{dev_diffuse_mat_.data(), std::size(diffuse_mat)},

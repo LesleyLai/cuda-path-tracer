@@ -9,6 +9,7 @@ target_include_directories(common INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
 find_package(glfw3 REQUIRED)
 find_package(glad REQUIRED)
+find_package(tl-function-ref REQUIRED)
 
 add_executable(app
         path_tracer.cu
@@ -19,9 +20,18 @@ add_executable(app
         window.cpp
         window.hpp
         app.hpp
-        app.cpp cuda_check.hpp cuda_buffer.hpp distributions.cuh)
+        app.cpp
+        cuda_check.hpp
+        cuda_buffer.hpp
+        distributions.cuh
+        preview_renderer.cpp
+        preview_renderer.hpp)
 target_link_libraries(app PRIVATE
-        common glfw::glfw glad::glad CUDA::cudart)
+        common
+        glfw::glfw
+        glad::glad
+        tl::function-ref
+        CUDA::cudart)
 set_property(TARGET app PROPERTY CUDA_ARCHITECTURES OFF)
 target_compile_options(
         app PRIVATE
