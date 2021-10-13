@@ -3,9 +3,6 @@
 #include "path_tracer.hpp"
 #include "window.hpp"
 
-#include <cuda_gl_interop.h>
-#include <cuda_runtime_api.h>
-
 #include <memory>
 
 class PreviewRenderer;

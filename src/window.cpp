@@ -1,5 +1,9 @@
 #include "window.hpp"
 
+#include <glad/glad.h>
+
+#include <GLFW/glfw3.h>
+
 #include <fmt/core.h>
 
 Window::Window(int width, int height, const char* title)
@@ -51,4 +55,11 @@ void Window::set_should_close(bool should_close)
 void Window::poll_events()
 {
   glfwPollEvents();
+}
+
+auto Window::resolution() const -> Resolution
+{
+  Resolution res;
+  glfwGetWindowSize(window_, &res.width, &res.height);
+  return res;
 }

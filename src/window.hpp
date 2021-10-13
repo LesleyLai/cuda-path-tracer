@@ -1,11 +1,14 @@
 #ifndef CUDA_OPENGL_BOILERPLATE_WINDOW_HPP
 #define CUDA_OPENGL_BOILERPLATE_WINDOW_HPP
 
-#include <glad/glad.h>
-
-#include <GLFW/glfw3.h>
-
 #include <utility>
+
+struct GLFWwindow;
+
+struct Resolution {
+  int width = 0;
+  int height = 0;
+};
 
 class Window {
   GLFWwindow* window_ = nullptr;
@@ -30,19 +33,7 @@ public:
     return window_;
   }
 
-  [[nodiscard]] auto width() const -> int
-  {
-    int width, height;
-    glfwGetWindowSize(window_, &width, &height);
-    return width;
-  }
-
-  [[nodiscard]] auto height() const -> int
-  {
-    int width, height;
-    glfwGetWindowSize(window_, &width, &height);
-    return height;
-  }
+  [[nodiscard]] auto resolution() const -> Resolution;
 
   void swap_buffers();
 

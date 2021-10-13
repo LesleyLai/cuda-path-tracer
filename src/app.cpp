@@ -9,6 +9,10 @@
 
 #include "gui.hpp"
 
+#include <GLFW/glfw3.h>
+
+#include <cuda_runtime_api.h>
+
 App::App()
 {
   int gpu_device = 0;
@@ -51,8 +55,7 @@ App::App()
     }
   });
 
-  int width = window_.width();
-  int height = window_.height();
+  const auto [width, height] = window_.resolution();
   preview_ = std::make_unique<PreviewRenderer>(width, height);
   path_tracer_.create_buffers(width, height);
 
@@ -67,7 +70,8 @@ App::~App()
 void App::run_cuda()
 {
   preview_->map_pbo([&](uchar4* dev_pbo) {
-    path_tracer_.path_trace(dev_pbo, window_.width(), window_.height());
+    const auto resolution = window_.resolution();
+    path_tracer_.path_trace(dev_pbo, resolution.width, resolution.height);
   });
 }
 
@@ -76,7 +80,8 @@ void App::main_loop()
   while (!window_.should_close()) {
     window_.poll_events();
     run_cuda();
-    preview_->render(window_.width(), window_.height());
+    const auto resolution = window_.resolution();
+    preview_->render(resolution.width, resolution.height);
     draw_gui();
     window_.swap_buffers();
   }
