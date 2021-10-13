@@ -3,10 +3,12 @@
 #include <fmt/core.h>
 
 Window::Window(int width, int height, const char* title)
-    : window_{glfwCreateWindow(static_cast<int>(width),
-                               static_cast<int>(height), title, nullptr,
-                               nullptr)}
 {
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+  window_ = glfwCreateWindow(static_cast<int>(width), static_cast<int>(height),
+                             title, nullptr, nullptr);
+
   if (!window_) {
     fmt::print(stderr, "Error: Failed to create a GLFW Window");
     glfwTerminate();

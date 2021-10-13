@@ -13,12 +13,10 @@
 
 class PreviewRenderer {
   ShaderProgram program_{};
+  GLuint preview_vao_ = 0;
   GLuint pbo_ = 0;
   cudaGraphicsResource* pbo_cuda_resource_ = nullptr;
   GLuint image_ = 0;
-
-  static constexpr GLuint position_location = 0;
-  static constexpr GLuint tex_coords_location = 1;
 
 public:
   PreviewRenderer(int width, int height);

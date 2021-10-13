@@ -2,6 +2,9 @@
 
 namespace {
 
+static constexpr GLuint position_location = 0;
+static constexpr GLuint tex_coords_location = 1;
+
 [[nodiscard]] auto init_texture(int width, int height) -> GLuint
 {
   GLuint image = 0;
@@ -47,7 +50,7 @@ void destroy_pbo(cudaGraphicsResource* pbo_cuda_resource, GLuint pbo)
   }
 }
 
-void init_vao(GLuint position_location, GLuint tex_coords_location)
+void init_vao(GLuint& preview_vao)
 {
   static constexpr GLfloat vertices[] = {
       -1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f,
@@ -58,20 +61,23 @@ void init_vao(GLuint position_location, GLuint tex_coords_location)
 
   static constexpr GLushort indices[] = {0, 1, 3, 3, 1, 2};
 
-  GLuint vertex_buffer_obj_ID[3];
-  glGenBuffers(3, vertex_buffer_obj_ID);
+  glGenVertexArrays(1, &preview_vao);
+  glBindVertexArray(preview_vao);
 
-  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_obj_ID[0]);
+  GLuint buffers[3];
+  glGenBuffers(3, buffers);
+
+  glBindBuffer(GL_ARRAY_BUFFER, buffers[0]);
   glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
   glVertexAttribPointer(position_location, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
   glEnableVertexAttribArray(position_location);
 
-  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_obj_ID[1]);
+  glBindBuffer(GL_ARRAY_BUFFER, buffers[1]);
   glBufferData(GL_ARRAY_BUFFER, sizeof(tex_coords), tex_coords, GL_STATIC_DRAW);
   glVertexAttribPointer(tex_coords_location, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
   glEnableVertexAttribArray(tex_coords_location);
 
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertex_buffer_obj_ID[2]);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[2]);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
                GL_STATIC_DRAW);
 }
@@ -99,7 +105,7 @@ PreviewRenderer::PreviewRenderer(int width, int height)
   pbo_ = create_pbo(width, height, &pbo_cuda_resource_);
   image_ = init_texture(width, height);
 
-  init_vao(position_location, tex_coords_location);
+  init_vao(preview_vao_);
 }
 
 PreviewRenderer::~PreviewRenderer()
@@ -110,12 +116,19 @@ PreviewRenderer::~PreviewRenderer()
 void PreviewRenderer::render(int width, int height)
 {
   program_.use();
+  glBindVertexArray(preview_vao_);
+
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_);
   glBindTexture(GL_TEXTURE_2D, image_);
   glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA,
                   GL_UNSIGNED_BYTE, nullptr);
   glClear(GL_COLOR_BUFFER_BIT);
   glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr);
+
+  glUseProgram(0);
+  glBindVertexArray(0);
+  glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+  glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void PreviewRenderer::map_pbo(tl::function_ref<void(uchar4*)> callback)

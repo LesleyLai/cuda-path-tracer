@@ -31,6 +31,7 @@ target_link_libraries(app PRIVATE
         glfw::glfw
         glad::glad
         tl::function-ref
+        third-party::imgui_bindings
         CUDA::cudart)
 set_property(TARGET app PROPERTY CUDA_ARCHITECTURES OFF)
 target_compile_options(

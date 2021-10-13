@@ -3,3 +3,6 @@ CMakeLists.txt.user
 cmake-build-*
 build
 .vs
+
+# Copied by conan
+third-party/imgui/bindings
