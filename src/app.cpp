@@ -29,6 +29,8 @@ App::App()
     std::exit(1);
   }
 
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
   window_ = Window(800, 800, "CUDA Path Tracer");
 
   glfwSetWindowUserPointer(window_.get(), this);
@@ -54,6 +56,15 @@ App::App()
       }
     }
   });
+  glfwSetErrorCallback([](int error, const char* description) {
+    fmt::print(stderr, "Error {}: {}\n", error, description);
+    std::fflush(stderr);
+  });
+
+  if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
+    fmt::print(stderr, "Failed to initialize OpenGL context");
+    std::exit(1);
+  }
 
   const auto [width, height] = window_.resolution();
   preview_ = std::make_unique<PreviewRenderer>(width, height);
