@@ -237,6 +237,8 @@ PathTracer::PathTracer() = default;
 void PathTracer::path_trace(uchar4* dev_pbo, unsigned int width,
                             unsigned int height)
 {
+  if (iteration_ >= max_iterations) return;
+
   constexpr unsigned int block_size = 16;
   const dim3 threads_per_block(block_size, block_size);
 
@@ -259,7 +261,7 @@ void PathTracer::path_trace(uchar4* dev_pbo, unsigned int width,
   ++iteration_;
 }
 
-void PathTracer::reset()
+void PathTracer::restart()
 {
   iteration_ = 0;
 }

@@ -27,4 +27,5 @@ public:
 
 private:
   void run_cuda();
+  void draw_gui();
 };

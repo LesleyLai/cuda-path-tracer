@@ -28,6 +28,10 @@ struct DielectricMaterial {
 };
 
 class PathTracer {
+public:
+  int max_iterations = 10000;
+
+private:
   cuda::Buffer<Sphere> dev_spheres_;
   cuda::Buffer<Material> dev_mat_;
   cuda::Buffer<DiffuseMateral> dev_diffuse_mat_;
@@ -36,14 +40,14 @@ class PathTracer {
 
   cuda::Buffer<glm::vec3> dev_image_;
 
-  std::size_t iteration_ = 0;
+  int iteration_ = 0;
 
 public:
   PathTracer();
 
-  void reset();
+  void restart();
 
-  [[nodiscard]] auto iteration() const noexcept -> std::size_t
+  [[nodiscard]] auto iteration() const noexcept -> int
   {
     return iteration_;
   }

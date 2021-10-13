@@ -5,42 +5,9 @@
 
 #include <fmt/format.h>
 
-#include <imgui.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
+#include <algorithm>
 
-namespace {
-
-void init_imgui(GLFWwindow* window)
-{
-  IMGUI_CHECKVERSION();
-  ImGui::CreateContext();
-  ImGuiIO& io = ImGui::GetIO();
-  // io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable
-  // Keyboard Controls
-  // io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad; // Enable Gamepad
-  // Controls
-
-  // Setup Dear ImGui style
-  // ImGui::StyleColorsDark();
-  ImGui::StyleColorsClassic();
-
-  // Setup Platform/Renderer bindings
-  ImGui_ImplGlfw_InitForOpenGL(window, true);
-  ImGui_ImplOpenGL3_Init("#version 450");
-
-  // Load Fonts
-  io.Fonts->AddFontFromFileTTF("fonts/Roboto-Medium.ttf", 30.0f);
-}
-
-void destroy_imgui()
-{
-  ImGui_ImplOpenGL3_Shutdown();
-  ImGui_ImplGlfw_Shutdown();
-  ImGui::DestroyContext();
-}
-
-} // namespace
+#include "gui.hpp"
 
 App::App()
 {
@@ -79,7 +46,7 @@ App::App()
       case GLFW_KEY_ESCAPE:
         glfwSetWindowShouldClose(window, GL_TRUE);
       case GLFW_KEY_SPACE:
-        app->path_tracer_.reset();
+        app->path_tracer_.restart();
       }
     }
   });
@@ -110,16 +77,7 @@ void App::main_loop()
     window_.poll_events();
     run_cuda();
     preview_->render(window_.width(), window_.height());
-
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-
-    ImGui::ShowDemoWindow();
-
-    ImGui::Render();
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
+    draw_gui();
     window_.swap_buffers();
   }
 }
