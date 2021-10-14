@@ -27,6 +27,8 @@ struct DielectricMaterial {
   float refraction_index = 1.0;
 };
 
+class Camera;
+
 class PathTracer {
 public:
   int max_iterations = 10000;
@@ -47,13 +49,11 @@ public:
 
   void restart();
 
-  [[nodiscard]] auto iteration() const noexcept -> int
-  {
-    return iteration_;
-  }
+  [[nodiscard]] auto iteration() const noexcept -> int { return iteration_; }
 
   void resize_image(unsigned int width, unsigned int height);
 
   void create_buffers(unsigned int width, unsigned int height);
-  void path_trace(uchar4* dev_pbo, unsigned int width, unsigned int height);
+  void path_trace(uchar4* dev_pbo, const Camera& camera, unsigned int width,
+                  unsigned int height);
 };

@@ -1,5 +1,6 @@
 #include "path_tracer.hpp"
 
+#include "camera.hpp"
 #include "distributions.cuh"
 #include "span.hpp"
 
@@ -56,7 +57,8 @@ struct Index2D {
   return Index2D{x, y};
 }
 
-[[nodiscard]] __device__ auto raygen(unsigned int width, unsigned int height,
+[[nodiscard]] __device__ auto raygen(glm::mat4 camera_matrix,
+                                     unsigned int width, unsigned int height,
                                      unsigned int x, unsigned int y,
                                      thrust::default_random_engine& rng) -> Ray
 {
@@ -79,8 +81,13 @@ struct Index2D {
       (static_cast<float>(x) + dist(rng)) / static_cast<float>(width - 1);
   const auto v =
       (static_cast<float>(y) + dist(rng)) / static_cast<float>(height - 1);
-  return Ray{origin,
-             lower_left_corner + u * horizontal + v * vertical - origin};
+  const auto direction =
+      lower_left_corner + u * horizontal + v * vertical - origin;
+
+  const auto world_origin = glm::vec3(camera_matrix * glm::vec4(origin, 1.0));
+  const auto world_direction =
+      glm::vec3(camera_matrix * glm::vec4(direction, 1.0));
+  return Ray{world_origin, world_direction};
 }
 
 __device__ auto get_background_color(Ray r) -> glm::vec3
@@ -128,13 +135,12 @@ __device__ static auto reflectance(float cosine, float ref_idx) -> float
   return r0 + (1 - r0) * pow((1 - cosine), 5);
 }
 
-__global__ void
-path_tracing_kernel(uchar4* pbo, glm::vec3* image, std::size_t iteration,
-                    Span<const Sphere> spheres, Span<const Material> mat,
-                    Span<const DiffuseMateral> diffuse_mat,
-                    Span<const MetalMaterial> metal_mat,
-                    Span<const DielectricMaterial> dielectric_mat,
-                    unsigned int width, unsigned int height)
+__global__ void path_tracing_kernel(
+    glm::mat4 camera_matrix, uchar4* pbo, glm::vec3* image,
+    std::size_t iteration, Span<const Sphere> spheres, Span<const Material> mat,
+    Span<const DiffuseMateral> diffuse_mat, Span<const MetalMaterial> metal_mat,
+    Span<const DielectricMaterial> dielectric_mat, unsigned int width,
+    unsigned int height)
 {
   const auto [x, y] = calculate_index_2d();
   if (x >= width || y >= height) return;
@@ -143,7 +149,7 @@ path_tracing_kernel(uchar4* pbo, glm::vec3* image, std::size_t iteration,
   thrust::default_random_engine rng(hash(hash(index) ^ iteration));
 
   // ray gen
-  auto ray = raygen(width, height, x, y, rng);
+  auto ray = raygen(camera_matrix, width, height, x, y, rng);
 
   // Path tracing
   glm::vec3 color{1.0f, 1.0f, 1.0f};
@@ -234,8 +240,8 @@ path_tracing_kernel(uchar4* pbo, glm::vec3* image, std::size_t iteration,
 
 PathTracer::PathTracer() = default;
 
-void PathTracer::path_trace(uchar4* dev_pbo, unsigned int width,
-                            unsigned int height)
+void PathTracer::path_trace(uchar4* dev_pbo, const Camera& camera,
+                            unsigned int width, unsigned int height)
 {
   if (iteration_ >= max_iterations) return;
 
@@ -247,7 +253,7 @@ void PathTracer::path_trace(uchar4* dev_pbo, unsigned int width,
   const dim3 full_blocks_per_grid(blocks_x, blocks_y);
 
   path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-      dev_pbo, dev_image_.data(), iteration_,
+      camera.camera_matrix(), dev_pbo, dev_image_.data(), iteration_,
       Span{dev_spheres_.data(), std::size(spheres)},
       Span{dev_mat_.data(), std::size(mat)},
       Span{dev_diffuse_mat_.data(), std::size(diffuse_mat)},
@@ -276,7 +282,7 @@ void PathTracer::resize_image(unsigned int width, unsigned int height)
 template <typename T>
 [[nodiscard]] auto create_buffer_from_cpu_data(Span<const T> span)
 {
-  cuda::Buffer<T> dev_buffer = cuda::make_buffer<T>(span.size());
+  auto dev_buffer = cuda::make_buffer<T>(span.size());
   CUDA_CHECK(cudaMemcpy(dev_buffer.data(), span.data(), span.size() * sizeof(T),
                         cudaMemcpyHostToDevice));
   return dev_buffer;

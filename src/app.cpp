@@ -47,13 +47,35 @@ App::App()
                                        int /*scancode*/, int action,
                                        int /*mods*/) {
     App* app = static_cast<App*>(glfwGetWindowUserPointer(window));
-    if (action == GLFW_PRESS) {
+    switch (action) {
+    case GLFW_PRESS:
       switch (key) {
-      case GLFW_KEY_ESCAPE:
-        glfwSetWindowShouldClose(window, GL_TRUE);
-      case GLFW_KEY_SPACE:
-        app->path_tracer_.restart();
+      case GLFW_KEY_ESCAPE: glfwSetWindowShouldClose(window, GL_TRUE); break;
+      case GLFW_KEY_SPACE: app->path_tracer_.restart(); break;
+      default: break;
       }
+    case GLFW_REPEAT: {
+      constexpr float speed = 0.01f;
+      switch (key) {
+      case GLFW_KEY_W:
+        app->camera_.move(Camera::MoveDirection::up, speed);
+        app->path_tracer_.restart();
+        break;
+      case GLFW_KEY_A:
+        app->camera_.move(Camera::MoveDirection::left, speed);
+        app->path_tracer_.restart();
+        break;
+      case GLFW_KEY_S:
+        app->camera_.move(Camera::MoveDirection::down, speed);
+        app->path_tracer_.restart();
+        break;
+      case GLFW_KEY_D:
+        app->camera_.move(Camera::MoveDirection::right, speed);
+        app->path_tracer_.restart();
+        break;
+      default: break;
+      }
+    }
     }
   });
   glfwSetErrorCallback([](int error, const char* description) {
@@ -82,7 +104,8 @@ void App::run_cuda()
 {
   preview_->map_pbo([&](uchar4* dev_pbo) {
     const auto resolution = window_.resolution();
-    path_tracer_.path_trace(dev_pbo, resolution.width, resolution.height);
+    path_tracer_.path_trace(dev_pbo, camera_, resolution.width,
+                            resolution.height);
   });
 }
 

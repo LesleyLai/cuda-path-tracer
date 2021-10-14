@@ -25,7 +25,11 @@ add_executable(app
         cuda_buffer.hpp
         distributions.cuh
         preview_renderer.cpp
-        preview_renderer.hpp gui.cpp gui.hpp)
+        preview_renderer.hpp
+        gui.cpp
+        gui.hpp
+        camera.cpp
+        camera.hpp)
 target_link_libraries(app PRIVATE
         common
         glfw::glfw

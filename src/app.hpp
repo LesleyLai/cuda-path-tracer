@@ -1,5 +1,6 @@
 #pragma once
 
+#include "camera.hpp"
 #include "path_tracer.hpp"
 #include "window.hpp"
 
@@ -11,6 +12,7 @@ class App {
   Window window_;
   std::unique_ptr<PreviewRenderer> preview_;
   PathTracer path_tracer_;
+  Camera camera_;
 
 public:
   App();
