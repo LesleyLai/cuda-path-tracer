@@ -204,14 +204,15 @@ __global__ void path_tracing_kernel(
       const float sin_theta = sqrtf(1.0f - cos_theta * cos_theta);
 
       const bool cannot_refract = refraction_ratio * sin_theta > 1.0;
-      glm::vec3 direction;
       thrust::uniform_real_distribution<float> dist(0.0, 1.0);
-      if (cannot_refract ||
-          reflectance(cos_theta, refraction_ratio) > dist(rng)) {
-        direction = reflect(unit_direction, record.normal);
-      } else {
-        direction = refract(unit_direction, record.normal, refraction_ratio);
-      }
+      const glm::vec3 direction = [&]() {
+        if (cannot_refract ||
+            reflectance(cos_theta, refraction_ratio) > dist(rng)) {
+          return reflect(unit_direction, record.normal);
+        } else {
+          return refract(unit_direction, record.normal, refraction_ratio);
+        }
+      }();
 
       ray = Ray{record.point, direction};
     } break;

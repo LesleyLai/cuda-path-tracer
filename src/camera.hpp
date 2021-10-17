@@ -2,7 +2,6 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 
 class Camera {
   glm::vec3 position_ = glm::vec3(0.0);
@@ -14,7 +13,8 @@ public:
   void set_fov(float fov) noexcept { fov_ = fov; }
 
   [[nodiscard]] auto camera_matrix() const -> glm::mat4;
+  [[nodiscard]] auto view_matrix() const -> glm::mat4;
 
-  enum class MoveDirection { up, down, left, right };
+  enum class MoveDirection { up, down, left, right, forward, backward };
   void move(MoveDirection direction, float speed);
 };

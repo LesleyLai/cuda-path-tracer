@@ -58,7 +58,7 @@ App::App()
       constexpr float speed = 0.01f;
       switch (key) {
       case GLFW_KEY_W:
-        app->camera_.move(Camera::MoveDirection::up, speed);
+        app->camera_.move(Camera::MoveDirection::forward, speed);
         app->path_tracer_.restart();
         break;
       case GLFW_KEY_A:
@@ -66,11 +66,19 @@ App::App()
         app->path_tracer_.restart();
         break;
       case GLFW_KEY_S:
-        app->camera_.move(Camera::MoveDirection::down, speed);
+        app->camera_.move(Camera::MoveDirection::backward, speed);
         app->path_tracer_.restart();
         break;
       case GLFW_KEY_D:
         app->camera_.move(Camera::MoveDirection::right, speed);
+        app->path_tracer_.restart();
+        break;
+      case GLFW_KEY_R:
+        app->camera_.move(Camera::MoveDirection::up, speed);
+        app->path_tracer_.restart();
+        break;
+      case GLFW_KEY_F:
+        app->camera_.move(Camera::MoveDirection::down, speed);
         app->path_tracer_.restart();
         break;
       default: break;

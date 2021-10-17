@@ -1,8 +1,15 @@
 #include "camera.hpp"
 
+#include <glm/gtx/transform.hpp>
+
 auto Camera::camera_matrix() const -> glm::mat4
 {
   return glm::translate(glm::identity<glm::mat4>(), position_);
+}
+
+auto Camera::view_matrix() const -> glm::mat4
+{
+  return glm::inverse(camera_matrix());
 }
 
 void Camera::move(Camera::MoveDirection direction, float speed)
@@ -13,7 +20,10 @@ void Camera::move(Camera::MoveDirection direction, float speed)
     case MoveDirection::down: return glm::vec3{0, -1, 0};
     case MoveDirection::left: return glm::vec3{1, 0, 0};
     case MoveDirection::right: return glm::vec3{-1, 0, 0};
+    case MoveDirection::forward: return glm::vec3{0, 0, -1};
+    case MoveDirection::backward: return glm::vec3{0, 0, 1};
     }
+    return glm::vec3{0};
   }();
 
   position_ += glm::vec3(camera_matrix() * glm::vec4(in_translation, 0));
