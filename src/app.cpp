@@ -84,8 +84,53 @@ App::App()
       default: break;
       }
     }
+    default: break;
     }
   });
+
+  glfwSetMouseButtonCallback(window_.get(), [](GLFWwindow* window, int button,
+                                               int action, int /*mods*/) {
+    auto* app_ptr = reinterpret_cast<App*>(glfwGetWindowUserPointer(window));
+    if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+      switch (action) {
+      case GLFW_PRESS: app_ptr->is_right_clicking_ = true; break;
+      case GLFW_RELEASE: app_ptr->is_right_clicking_ = false;
+      }
+    }
+  });
+
+  glfwSetCursorPosCallback(window_.get(), [](GLFWwindow* window, double x,
+                                             double y) {
+    auto* app_ptr = reinterpret_cast<App*>(glfwGetWindowUserPointer(window));
+    auto& camera = app_ptr->camera_;
+
+    int width = 0, height = 0;
+    glfwGetWindowSize(window, &width, &height);
+    const auto f_width = static_cast<float>(width);
+    const auto f_height = static_cast<float>(height);
+
+    static bool first_mouse = true;
+    static float last_x = f_width / 2.0f;
+    static float last_y = f_height / 2.0f;
+    if (first_mouse) {
+      last_x = static_cast<float>(x);
+      last_y = static_cast<float>(y);
+      first_mouse = false;
+    }
+
+    // reversed since y-coordinates go from bottom to top
+    const auto x_offset = static_cast<float>(x) - last_x;
+    const auto y_offset = last_y - static_cast<float>(y);
+
+    last_x = static_cast<float>(x);
+    last_y = static_cast<float>(y);
+
+    if (app_ptr->is_right_clicking_) {
+      camera.mouse_move(glm::radians(x_offset), glm::radians(y_offset));
+      app_ptr->path_tracer_.restart();
+    }
+  });
+
   glfwSetErrorCallback([](int error, const char* description) {
     fmt::print(stderr, "Error {}: {}\n", error, description);
     std::fflush(stderr);

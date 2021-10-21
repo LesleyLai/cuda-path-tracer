@@ -1,10 +1,24 @@
 #include "camera.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <glm/gtx/transform.hpp>
 
 auto Camera::camera_matrix() const -> glm::mat4
 {
-  return glm::translate(glm::identity<glm::mat4>(), position_);
+  //  glm::vec3 direction;
+  //  direction.x = std::cos(yaw_) * std::cos(pitch_);
+  //  direction.y = std::sin(pitch_);
+  //  direction.z = std::sin(yaw_) * std::cos(pitch_);
+
+  constexpr glm::vec3 RIGHT = glm::vec3(1, 0, 0);
+  constexpr glm::vec3 UP = glm::vec3(0, 1, 0);
+  constexpr glm::vec3 FORWARD = glm::vec3(0, 0, 1);
+
+  return glm::translate(glm::identity<glm::mat4>(), position_) *
+         glm::rotate(yaw_, UP) * glm::rotate(pitch_, RIGHT) /**
+         glm::rotate(pitch_, FORWARD)*/
+      ;
 }
 
 auto Camera::view_matrix() const -> glm::mat4
@@ -27,4 +41,12 @@ void Camera::move(Camera::MoveDirection direction, float speed)
   }();
 
   position_ += glm::vec3(camera_matrix() * glm::vec4(in_translation, 0));
+}
+
+void Camera::mouse_move(float x_offset, float y_offset)
+{
+  yaw_ += x_offset;
+  pitch_ += y_offset;
+
+  pitch_ = std::clamp(pitch_, -glm::half_pi<float>(), glm::half_pi<float>());
 }

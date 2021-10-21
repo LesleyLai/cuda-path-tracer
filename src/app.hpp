@@ -14,6 +14,8 @@ class App {
   PathTracer path_tracer_;
   Camera camera_;
 
+  bool is_right_clicking_ = false;
+
 public:
   App();
   ~App();

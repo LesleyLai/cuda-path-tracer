@@ -5,6 +5,10 @@
 
 class Camera {
   glm::vec3 position_ = glm::vec3(0.0);
+  float pitch_ = 0;
+  // float row_ = 0;
+  float yaw_ = 0;
+
   float fov_ = glm::pi<float>() / 2.f;
 
 public:
@@ -17,4 +21,5 @@ public:
 
   enum class MoveDirection { up, down, left, right, forward, backward };
   void move(MoveDirection direction, float speed);
+  void mouse_move(float x_offset, float y_offset);
 };
