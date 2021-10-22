@@ -22,4 +22,10 @@ public:
   enum class MoveDirection { up, down, left, right, forward, backward };
   void move(MoveDirection direction, float speed);
   void mouse_move(float x_offset, float y_offset);
+
+  /// @return true if need to restart path tracer
+  [[nodiscard]] auto draw_gui() -> bool;
+
+private:
+  static auto restrict_pitch(float pitch) -> float;
 };

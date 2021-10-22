@@ -86,7 +86,7 @@ struct Index2D {
 
   const auto world_origin = glm::vec3(camera_matrix * glm::vec4(origin, 1.0));
   const auto world_direction =
-      glm::vec3(camera_matrix * glm::vec4(direction, 1.0));
+      glm::normalize(glm::vec3(camera_matrix * glm::vec4(direction, 0.0)));
   return Ray{world_origin, world_direction};
 }
 

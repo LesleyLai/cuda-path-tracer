@@ -55,7 +55,7 @@ void ToolTip(const char* desc, const char* shortcut = nullptr)
   }
 }
 
-void draw_path_tracer_gui(class PathTracer& path_tracer)
+void draw_path_tracer_gui(PathTracer& path_tracer)
 {
   ImGui::Text("%d iterations", path_tracer.iteration());
   ImGui::SameLine();
@@ -75,11 +75,30 @@ void App::draw_gui()
   ImGui::NewFrame();
 
   ImGui::Begin("Control Panel");
-
   draw_path_tracer_gui(path_tracer_);
+
+  ImGui::Text("Camera");
+  if (camera_.draw_gui()) { path_tracer_.restart(); }
 
   ImGui::End();
 
   ImGui::Render();
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+[[nodiscard]] auto Camera::draw_gui() -> bool
+{
+  ImGui::Text("w/a/s/d: forward/left/backward/right");
+  ImGui::Text("r/f: up/down");
+  ImGui::Text("mouse right drag: pitch/yaw");
+
+  bool camera_changed = ImGui::InputFloat3("Position", &position_[0]);
+  float rotation[3] = {0, glm::degrees(pitch_), glm::degrees(yaw_)};
+
+  if (ImGui::InputFloat3("Rotation", rotation)) {
+    pitch_ = restrict_pitch(glm::radians(rotation[1]));
+    yaw_ = glm::radians(rotation[2]);
+    camera_changed = true;
+  }
+  return camera_changed;
 }
