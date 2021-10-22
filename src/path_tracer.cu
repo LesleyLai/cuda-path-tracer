@@ -57,7 +57,7 @@ struct Index2D {
   return Index2D{x, y};
 }
 
-[[nodiscard]] __device__ auto raygen(glm::mat4 camera_matrix,
+[[nodiscard]] __device__ auto raygen(glm::mat4 camera_matrix, float fov,
                                      unsigned int width, unsigned int height,
                                      unsigned int x, unsigned int y,
                                      thrust::default_random_engine& rng) -> Ray
@@ -65,7 +65,7 @@ struct Index2D {
   const float aspect_ratio =
       static_cast<float>(width) / static_cast<float>(height);
 
-  const float viewport_height = 2.0f;
+  const float viewport_height = 2.0f * tan(fov / 2);
   const float viewport_width = aspect_ratio * viewport_height;
   const float focal_length = 1.0;
 
@@ -136,7 +136,7 @@ __device__ static auto reflectance(float cosine, float ref_idx) -> float
 }
 
 __global__ void path_tracing_kernel(
-    glm::mat4 camera_matrix, uchar4* pbo, glm::vec3* image,
+    glm::mat4 camera_matrix, float fov, uchar4* pbo, glm::vec3* image,
     std::size_t iteration, Span<const Sphere> spheres, Span<const Material> mat,
     Span<const DiffuseMateral> diffuse_mat, Span<const MetalMaterial> metal_mat,
     Span<const DielectricMaterial> dielectric_mat, unsigned int width,
@@ -149,7 +149,7 @@ __global__ void path_tracing_kernel(
   thrust::default_random_engine rng(hash(hash(index) ^ iteration));
 
   // ray gen
-  auto ray = raygen(camera_matrix, width, height, x, y, rng);
+  auto ray = raygen(camera_matrix, fov, width, height, x, y, rng);
 
   // Path tracing
   glm::vec3 color{1.0f, 1.0f, 1.0f};
@@ -254,8 +254,8 @@ void PathTracer::path_trace(uchar4* dev_pbo, const Camera& camera,
   const dim3 full_blocks_per_grid(blocks_x, blocks_y);
 
   path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-      camera.camera_matrix(), dev_pbo, dev_image_.data(), iteration_,
-      Span{dev_spheres_.data(), std::size(spheres)},
+      camera.camera_matrix(), camera.fov(), dev_pbo, dev_image_.data(),
+      iteration_, Span{dev_spheres_.data(), std::size(spheres)},
       Span{dev_mat_.data(), std::size(mat)},
       Span{dev_diffuse_mat_.data(), std::size(diffuse_mat)},
       Span{dev_metal_mat_.data(), std::size(metal_mat)},

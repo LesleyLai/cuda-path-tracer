@@ -100,5 +100,12 @@ void App::draw_gui()
     yaw_ = glm::radians(rotation[2]);
     camera_changed = true;
   }
+
+  float fov = glm::degrees(fov_);
+  if (ImGui::SliderFloat("Fov", &fov, 10, 170)) {
+    fov_ = glm::radians(fov);
+    camera_changed = true;
+  }
+
   return camera_changed;
 }
