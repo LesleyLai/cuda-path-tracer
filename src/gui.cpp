@@ -75,10 +75,19 @@ void App::draw_gui()
   ImGui::NewFrame();
 
   ImGui::Begin("Control Panel");
-  draw_path_tracer_gui(path_tracer_);
 
-  ImGui::Text("Camera");
-  if (camera_.draw_gui()) { path_tracer_.restart(); }
+  ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
+  if (ImGui::BeginTabBar("MyTabBar", tab_bar_flags)) {
+    if (ImGui::BeginTabItem("Path Tracer")) {
+      draw_path_tracer_gui(path_tracer_);
+      ImGui::EndTabItem();
+    }
+    if (ImGui::BeginTabItem("Camera")) {
+      if (camera_.draw_gui()) { path_tracer_.restart(); }
+      ImGui::EndTabItem();
+    }
+    ImGui::EndTabBar();
+  }
 
   ImGui::End();
 
@@ -92,20 +101,34 @@ void App::draw_gui()
   ImGui::Text("r/f: up/down");
   ImGui::Text("mouse right drag: pitch/yaw");
 
-  bool camera_changed = ImGui::InputFloat3("Position", &position_[0]);
+  ImGui::NewLine();
+  ImGui::Text("Transformation:");
+  bool pathtracer_restart_required = false;
+  if (ImGui::Button("Reset")) {
+    reset();
+    pathtracer_restart_required = true;
+  }
+
+  pathtracer_restart_required |= ImGui::InputFloat3("Position", &position_[0]);
+
   float rotation[3] = {0, glm::degrees(pitch_), glm::degrees(yaw_)};
 
   if (ImGui::InputFloat3("Rotation", rotation)) {
     pitch_ = restrict_pitch(glm::radians(rotation[1]));
     yaw_ = glm::radians(rotation[2]);
-    camera_changed = true;
+    pathtracer_restart_required = true;
   }
 
   float fov = glm::degrees(fov_);
   if (ImGui::SliderFloat("Fov", &fov, 10, 170)) {
     fov_ = glm::radians(fov);
-    camera_changed = true;
+    pathtracer_restart_required = true;
   }
 
-  return camera_changed;
+  ImGui::NewLine();
+  ImGui::Text("Movement:");
+  ImGui::SliderFloat("Speed", &speed_, 0.001, 100, "%.3f",
+                     ImGuiSliderFlags_Logarithmic);
+
+  return pathtracer_restart_required;
 }

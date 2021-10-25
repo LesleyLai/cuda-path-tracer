@@ -10,18 +10,13 @@ auto Camera::camera_matrix() const -> glm::mat4
 
   return glm::translate(glm::identity<glm::mat4>(), position_) *
          glm::rotate(yaw_, up) * glm::rotate(pitch_, right) /**
-         glm::rotate(pitch_, FORWARD)*/
+         glm::rotate(roll_, forward)*/
       ;
 }
 
-auto Camera::view_matrix() const -> glm::mat4
+void Camera::move(Camera::MoveDirection direction)
 {
-  return glm::inverse(camera_matrix());
-}
-
-void Camera::move(Camera::MoveDirection direction, float speed)
-{
-  const glm::vec3 in_translation = speed * [&]() {
+  const glm::vec3 in_translation = speed_ * [&]() {
     switch (direction) {
     case MoveDirection::up: return glm::vec3{0, 1, 0};
     case MoveDirection::down: return glm::vec3{0, -1, 0};
@@ -41,6 +36,15 @@ void Camera::mouse_move(float x_offset, float y_offset)
   yaw_ += x_offset;
   pitch_ += y_offset;
   pitch_ = restrict_pitch(pitch_);
+}
+
+void Camera::reset()
+{
+  position_ = glm::vec3(0.0);
+  pitch_ = 0;
+  yaw_ = 0;
+  // roll_ = 0;
+  speed_ = 0.01f;
 }
 
 auto Camera::restrict_pitch(float pitch) -> float
