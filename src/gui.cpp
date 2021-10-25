@@ -66,6 +66,48 @@ void draw_path_tracer_gui(PathTracer& path_tracer)
   path_tracer.max_iterations = std::max(1, path_tracer.max_iterations);
 }
 
+/// @return true if need to restart path tracer
+[[nodiscard]] auto draw_camera_gui(Camera& camera) -> bool
+{
+  ImGui::Text("w/a/s/d: forward/left/backward/right");
+  ImGui::Text("r/f: up/down");
+  ImGui::Text("mouse right drag: pitch/yaw");
+
+  ImGui::NewLine();
+  ImGui::Text("Transformation:");
+  bool pathtracer_restart_required = false;
+  if (ImGui::Button("Reset")) {
+    camera.reset();
+    pathtracer_restart_required = true;
+  }
+
+  auto position = camera.position();
+  pathtracer_restart_required |= ImGui::InputFloat3("Position", &position[0]);
+  camera.set_position(position);
+
+  float rotation[3] = {0, glm::degrees(camera.pitch()),
+                       glm::degrees(camera.yaw())};
+
+  if (ImGui::InputFloat3("Rotation", rotation)) {
+    camera.set_pitch(glm::radians(rotation[1]));
+    camera.set_yaw(glm::radians(rotation[2]));
+    pathtracer_restart_required = true;
+  }
+
+  float fov_degree = glm::degrees(camera.fov());
+  if (ImGui::SliderFloat("Fov", &fov_degree, 10, 170)) {
+    camera.set_fov(glm::radians(fov_degree));
+    pathtracer_restart_required = true;
+  }
+
+  ImGui::NewLine();
+  ImGui::Text("Movement:");
+  ImGui::SliderFloat("Speed", &camera.speed, 0.001, 100, "%.3f",
+                     ImGuiSliderFlags_Logarithmic);
+
+  return pathtracer_restart_required;
+}
+
 } // anonymous namespace
 
 void App::draw_gui()
@@ -83,7 +125,7 @@ void App::draw_gui()
       ImGui::EndTabItem();
     }
     if (ImGui::BeginTabItem("Camera")) {
-      if (camera_.draw_gui()) { path_tracer_.restart(); }
+      if (draw_camera_gui(camera_)) { path_tracer_.restart(); }
       ImGui::EndTabItem();
     }
     ImGui::EndTabBar();
@@ -93,42 +135,4 @@ void App::draw_gui()
 
   ImGui::Render();
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-}
-
-[[nodiscard]] auto Camera::draw_gui() -> bool
-{
-  ImGui::Text("w/a/s/d: forward/left/backward/right");
-  ImGui::Text("r/f: up/down");
-  ImGui::Text("mouse right drag: pitch/yaw");
-
-  ImGui::NewLine();
-  ImGui::Text("Transformation:");
-  bool pathtracer_restart_required = false;
-  if (ImGui::Button("Reset")) {
-    reset();
-    pathtracer_restart_required = true;
-  }
-
-  pathtracer_restart_required |= ImGui::InputFloat3("Position", &position_[0]);
-
-  float rotation[3] = {0, glm::degrees(pitch_), glm::degrees(yaw_)};
-
-  if (ImGui::InputFloat3("Rotation", rotation)) {
-    pitch_ = restrict_pitch(glm::radians(rotation[1]));
-    yaw_ = glm::radians(rotation[2]);
-    pathtracer_restart_required = true;
-  }
-
-  float fov = glm::degrees(fov_);
-  if (ImGui::SliderFloat("Fov", &fov, 10, 170)) {
-    fov_ = glm::radians(fov);
-    pathtracer_restart_required = true;
-  }
-
-  ImGui::NewLine();
-  ImGui::Text("Movement:");
-  ImGui::SliderFloat("Speed", &speed_, 0.001, 100, "%.3f",
-                     ImGuiSliderFlags_Logarithmic);
-
-  return pathtracer_restart_required;
 }
