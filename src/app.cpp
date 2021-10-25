@@ -44,14 +44,17 @@ App::App()
         glViewport(0, 0, width, height);
       });
   glfwSetKeyCallback(window_.get(), [](GLFWwindow* window, int key,
-                                       int /*scancode*/, int action,
-                                       int /*mods*/) {
+                                       int /*scancode*/, int action, int mods) {
     App* app = static_cast<App*>(glfwGetWindowUserPointer(window));
     switch (action) {
     case GLFW_PRESS:
       switch (key) {
       case GLFW_KEY_ESCAPE: glfwSetWindowShouldClose(window, GL_TRUE); break;
       case GLFW_KEY_SPACE: app->path_tracer_.restart(); break;
+      case GLFW_KEY_GRAVE_ACCENT: {
+        if (mods == GLFW_MOD_SHIFT)
+          app->hide_control_panel = !app->hide_control_panel; // ~
+      }; break;
       default: break;
       }
     case GLFW_REPEAT: {

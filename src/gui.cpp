@@ -112,11 +112,14 @@ void draw_path_tracer_gui(PathTracer& path_tracer)
 
 void App::draw_gui()
 {
+  if (hide_control_panel) return;
+
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
 
   ImGui::Begin("Control Panel");
+  ImGui::Text("~ to toggle");
 
   ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
   if (ImGui::BeginTabBar("MyTabBar", tab_bar_flags)) {

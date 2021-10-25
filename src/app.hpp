@@ -15,6 +15,7 @@ class App {
   Camera camera_;
 
   bool is_right_clicking_ = false;
+  bool hide_control_panel = false;
 
 public:
   App();
