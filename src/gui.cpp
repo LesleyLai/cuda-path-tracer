@@ -85,12 +85,13 @@ void draw_path_tracer_gui(PathTracer& path_tracer)
   pathtracer_restart_required |= ImGui::InputFloat3("Position", &position[0]);
   camera.set_position(position);
 
-  float rotation[3] = {0, glm::degrees(camera.pitch()),
-                       glm::degrees(camera.yaw())};
+  float rotation[3] = {glm::degrees(camera.pitch()), glm::degrees(camera.yaw()),
+                       glm::degrees(camera.roll())};
 
   if (ImGui::InputFloat3("Rotation", rotation)) {
-    camera.set_pitch(glm::radians(rotation[1]));
-    camera.set_yaw(glm::radians(rotation[2]));
+    camera.set_pitch(glm::radians(rotation[0]));
+    camera.set_yaw(glm::radians(rotation[1]));
+    camera.set_roll(glm::radians(rotation[2]));
     pathtracer_restart_required = true;
   }
 

@@ -8,7 +8,7 @@ class Camera {
 
 private:
   float pitch_ = 0;
-  // float roll_ = 0;
+  float roll_ = 0;
   float yaw_ = 0;
 
   float fov_ = glm::pi<float>() / 2.f;
@@ -38,6 +38,15 @@ public:
     while (yaw < -glm::pi<float>())
       yaw += glm::two_pi<float>();
     yaw_ = yaw;
+  }
+  [[nodiscard]] auto roll() const noexcept -> float { return roll_; }
+  void set_roll(float roll) noexcept
+  {
+    while (roll > glm::pi<float>())
+      roll -= glm::two_pi<float>();
+    while (roll < -glm::pi<float>())
+      roll += glm::two_pi<float>();
+    roll_ = roll;
   }
   [[nodiscard]] auto fov() const noexcept -> float { return fov_; }
   void set_fov(float fov) noexcept { fov_ = fov; }

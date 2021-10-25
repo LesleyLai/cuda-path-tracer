@@ -9,9 +9,8 @@ auto Camera::camera_matrix() const -> glm::mat4
   constexpr glm::vec3 forward(0, 0, 1);
 
   return glm::translate(glm::identity<glm::mat4>(), position_) *
-         glm::rotate(yaw_, up) * glm::rotate(pitch_, right) /**
-         glm::rotate(roll_, forward)*/
-      ;
+         glm::rotate(yaw_, up) * glm::rotate(pitch_, right) *
+         glm::rotate(roll_, forward);
 }
 
 void Camera::move(Camera::MoveDirection direction)
@@ -42,6 +41,6 @@ void Camera::reset()
   position_ = glm::vec3(0.0);
   pitch_ = 0;
   yaw_ = 0;
-  // roll_ = 0;
+  roll_ = 0;
   speed = default_speed;
 }
