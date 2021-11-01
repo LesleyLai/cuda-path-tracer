@@ -1,6 +1,8 @@
 ---
 Checks: '*,
 -altera-*,
+-cert-dcl37-c,
+-cert-dcl51-cpp,
 -clang-analyzer-deadcode.DeadStores,
 -clang-analyzer-alpha.*,
 -readability-*,
@@ -41,4 +43,6 @@ CheckOptions:
     value: '1'
   - key: cppcoreguidelines-avoid-magic-numbers.IgnoredIntegerValues
     value: '1;2;3;4;8;'
+  - key: bugprone-reserved-identifier.AllowedIdentifiers
+    value: '__host__;__device__;__global__'
 ...

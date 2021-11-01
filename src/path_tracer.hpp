@@ -6,7 +6,7 @@
 
 #include "cuda_buffer.hpp"
 #include "ray.hpp"
-#include "sphere.hpp"
+#include "sphere.cuh"
 
 struct Material {
   enum struct Type { Diffuse, Metal, Dielectric };
@@ -35,6 +35,8 @@ public:
 
 private:
   cuda::Buffer<Sphere> dev_spheres_;
+  cuda::Buffer<Triangle> dev_triangles_;
+
   cuda::Buffer<Material> dev_mat_;
   cuda::Buffer<DiffuseMateral> dev_diffuse_mat_;
   cuda::Buffer<MetalMaterial> dev_metal_mat_;

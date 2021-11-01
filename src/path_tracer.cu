@@ -26,6 +26,12 @@ static const Sphere spheres[] = {
     {{1.0f, 0.0f, -1.0f}, 0.5f, 3},
 };
 
+static const Triangle triangles[] = {{
+    {0.0f, 0.0f, 2.0f},
+    {0.0f, 10.0f, 2.0f},
+    {10.0f, 0.0f, 2.0f},
+}};
+
 static constexpr Material mat[] = {{Material::Type::Diffuse, 0},
                                    {Material::Type::Diffuse, 1},
                                    {Material::Type::Dielectric, 0},
@@ -98,6 +104,7 @@ __device__ auto get_background_color(Ray r) -> glm::vec3
 }
 
 __device__ auto ray_scene_intersection_test(Ray ray, Span<const Sphere> spheres,
+                                            Span<const Triangle> triangles,
                                             float t_min, float t_max,
                                             HitRecord& record) -> bool
 {
@@ -110,6 +117,16 @@ __device__ auto ray_scene_intersection_test(Ray ray, Span<const Sphere> spheres,
         record = new_record;
         t_max = new_record.t;
       }
+    }
+  }
+  for (const auto& triangle : triangles) {
+    HitRecord new_record;
+    if (ray_triangle_intersection_test(ray, triangle.pt0, triangle.pt1,
+                                       triangle.pt2, t_min, t_max,
+                                       new_record)) {
+      hit = true;
+      record = new_record;
+      t_max = new_record.t;
     }
   }
   return hit;
@@ -138,8 +155,8 @@ __device__ static auto reflectance(float cosine, float ref_idx) -> float
 __global__ void path_tracing_kernel(
     unsigned int width, unsigned int height, glm::mat4 camera_matrix, float fov,
     glm::vec3* image, std::size_t iteration, Span<const Sphere> spheres,
-    Span<const Material> mat, Span<const DiffuseMateral> diffuse_mat,
-    Span<const MetalMaterial> metal_mat,
+    Span<const Triangle> triangles, Span<const Material> mat,
+    Span<const DiffuseMateral> diffuse_mat, Span<const MetalMaterial> metal_mat,
     Span<const DielectricMaterial> dielectric_mat)
 {
   const auto [x, y] = calculate_index_2d();
@@ -156,8 +173,8 @@ __global__ void path_tracing_kernel(
   for (int i = 0; i < 50; ++i) {
     HitRecord record;
     float t_max = std::numeric_limits<float>::max();
-    const bool hit =
-        ray_scene_intersection_test(ray, spheres, 1e-5f, t_max, record);
+    const bool hit = ray_scene_intersection_test(ray, spheres, triangles, 1e-5f,
+                                                 t_max, record);
     if (!hit) {
       color *= get_background_color(ray);
       break;
@@ -264,6 +281,7 @@ void PathTracer::path_trace(uchar4* dev_pbo, const Camera& camera,
   path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
       width, height, camera.camera_matrix(), camera.fov(), dev_image_.data(),
       iteration_, Span{dev_spheres_.data(), std::size(spheres)},
+      Span{dev_triangles_.data(), std::size(triangles)},
       Span{dev_mat_.data(), std::size(mat)},
       Span{dev_diffuse_mat_.data(), std::size(diffuse_mat)},
       Span{dev_metal_mat_.data(), std::size(metal_mat)},
@@ -302,6 +320,7 @@ template <typename T>
 void PathTracer::create_buffers(unsigned int width, unsigned int height)
 {
   dev_spheres_ = create_buffer_from_cpu_data(Span{spheres});
+  dev_triangles_ = create_buffer_from_cpu_data(Span{triangles});
   dev_mat_ = create_buffer_from_cpu_data(Span{mat});
   dev_diffuse_mat_ = create_buffer_from_cpu_data(Span{diffuse_mat});
   dev_metal_mat_ = create_buffer_from_cpu_data(Span{metal_mat});
