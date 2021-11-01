@@ -113,7 +113,7 @@ void draw_path_tracer_gui(PathTracer& path_tracer)
 
 void App::draw_gui()
 {
-  if (hide_control_panel) return;
+  if (hide_control_panel_) return;
 
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();

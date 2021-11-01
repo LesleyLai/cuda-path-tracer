@@ -29,9 +29,9 @@ public:
   ~Shader();
 
   Shader(const Shader& other) = delete;
-  Shader& operator=(const Shader& other) = delete;
+  auto operator=(const Shader& other) -> Shader& = delete;
   Shader(Shader&& other) noexcept;
-  Shader& operator=(Shader&& other) noexcept;
+  auto operator=(Shader&& other) & noexcept -> Shader&;
 
 private:
   Type type_;
@@ -45,15 +45,9 @@ public:
   ShaderProgram() = default;
   explicit ShaderProgram(const std::vector<Shader>& shaders);
 
-  void use() const
-  {
-    glUseProgram(id_);
-  }
+  void use() const { glUseProgram(id_); }
 
-  [[nodiscard]] unsigned int id() const
-  {
-    return id_;
-  }
+  [[nodiscard]] auto id() const -> unsigned int { return id_; }
 
   void set_bool(const std::string& name, bool value) const
   {

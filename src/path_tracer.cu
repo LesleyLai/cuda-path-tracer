@@ -136,11 +136,11 @@ __device__ static auto reflectance(float cosine, float ref_idx) -> float
 }
 
 __global__ void path_tracing_kernel(
-    glm::mat4 camera_matrix, float fov, uchar4* pbo, glm::vec3* image,
-    std::size_t iteration, Span<const Sphere> spheres, Span<const Material> mat,
-    Span<const DiffuseMateral> diffuse_mat, Span<const MetalMaterial> metal_mat,
-    Span<const DielectricMaterial> dielectric_mat, unsigned int width,
-    unsigned int height)
+    unsigned int width, unsigned int height, glm::mat4 camera_matrix, float fov,
+    glm::vec3* image, std::size_t iteration, Span<const Sphere> spheres,
+    Span<const Material> mat, Span<const DiffuseMateral> diffuse_mat,
+    Span<const MetalMaterial> metal_mat,
+    Span<const DielectricMaterial> dielectric_mat)
 {
   const auto [x, y] = calculate_index_2d();
   if (x >= width || y >= height) return;
@@ -226,16 +226,24 @@ __global__ void path_tracing_kernel(
   // Final gathering
   const auto sample_count = static_cast<float>(iteration + 1);
   image[index] = (image[index] * (sample_count - 1) + color) / sample_count;
+}
 
-  // Visualization
-  constexpr auto normalize_color = [](float v) {
+__global__ void preview_kernel(unsigned int width, unsigned int height,
+                               glm::vec3* image, uchar4* pbo)
+{
+  const auto [x, y] = calculate_index_2d();
+  if (x >= width || y >= height) return;
+  const auto index = x + ((height - y) * width);
+
+  constexpr auto color_float_to_255 = [](float v) {
     return static_cast<unsigned char>(glm::clamp(v, 0.f, 1.f) * 255.99f);
   };
+
+  const auto color = image[index];
   if (x <= width && y <= height) {
-    pbo[index].w = 1;
-    pbo[index].x = normalize_color(image[index].x);
-    pbo[index].y = normalize_color(image[index].y);
-    pbo[index].z = normalize_color(image[index].z);
+    pbo[index] =
+        uchar4{color_float_to_255(color.x), color_float_to_255(color.y),
+               color_float_to_255(color.z), 1};
   }
 }
 
@@ -254,14 +262,16 @@ void PathTracer::path_trace(uchar4* dev_pbo, const Camera& camera,
   const dim3 full_blocks_per_grid(blocks_x, blocks_y);
 
   path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-      camera.camera_matrix(), camera.fov(), dev_pbo, dev_image_.data(),
+      width, height, camera.camera_matrix(), camera.fov(), dev_image_.data(),
       iteration_, Span{dev_spheres_.data(), std::size(spheres)},
       Span{dev_mat_.data(), std::size(mat)},
       Span{dev_diffuse_mat_.data(), std::size(diffuse_mat)},
       Span{dev_metal_mat_.data(), std::size(metal_mat)},
-      Span{dev_dielectric_mat_.data(), std::size(dielectric_mat)}, width,
-      height);
-  check_CUDA_error("Visualization kernel");
+      Span{dev_dielectric_mat_.data(), std::size(dielectric_mat)});
+  check_CUDA_error("Path Tracing kernel");
+  preview_kernel<<<full_blocks_per_grid, threads_per_block>>>(
+      width, height, dev_image_.data(), dev_pbo);
+  check_CUDA_error("Preview kernel");
 
   CUDA_CHECK(cudaDeviceSynchronize());
 
@@ -275,9 +285,9 @@ void PathTracer::restart()
 
 void PathTracer::resize_image(unsigned int width, unsigned int height)
 {
-  iteration_ = 0;
   dev_image_ = cuda::make_buffer<glm::vec3>(width * height);
   CUDA_CHECK(cudaDeviceSynchronize());
+  restart();
 }
 
 template <typename T>

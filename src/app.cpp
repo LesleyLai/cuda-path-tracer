@@ -53,7 +53,7 @@ App::App()
       case GLFW_KEY_SPACE: app->path_tracer_.restart(); break;
       case GLFW_KEY_GRAVE_ACCENT: {
         if (mods == GLFW_MOD_SHIFT)
-          app->hide_control_panel = !app->hide_control_panel; // ~
+          app->hide_control_panel_ = !app->hide_control_panel_; // ~
       }; break;
       default: break;
       }

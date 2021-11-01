@@ -71,7 +71,7 @@ Shader::Shader(Shader&& other) noexcept : type_{other.type_}, id_{other.id_}
   other.id_ = 0;
 }
 
-auto Shader::operator=(Shader&& other) noexcept -> Shader&
+auto Shader::operator=(Shader&& other) & noexcept -> Shader&
 {
   std::swap(id_, other.id_);
   std::swap(type_, other.type_);
