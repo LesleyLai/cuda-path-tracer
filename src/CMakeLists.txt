@@ -7,6 +7,7 @@ add_library(common INTERFACE sphere.cuh ray.hpp span.hpp)
 target_link_libraries(common INTERFACE fmt::fmt glm::glm)
 target_include_directories(common INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
+find_package(assimp)
 find_package(glfw3 REQUIRED)
 find_package(glad REQUIRED)
 find_package(tl-function-ref REQUIRED)
@@ -35,6 +36,7 @@ target_link_libraries(app PRIVATE
         glfw::glfw
         glad::glad
         tl::function-ref
+        assimp::assimp
         third-party::imgui_bindings
         CUDA::cudart)
 set_property(TARGET app PROPERTY CUDA_ARCHITECTURES OFF)

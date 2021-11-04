@@ -8,6 +8,9 @@
 #include "ray.hpp"
 #include "sphere.cuh"
 
+#include <thrust/device_vector.h>
+#include <thrust/host_vector.h>
+
 struct Material {
   enum struct Type { Diffuse, Metal, Dielectric };
   Type type = Type::Diffuse;
@@ -29,6 +32,16 @@ struct DielectricMaterial {
 
 class Camera;
 
+struct Vertex {
+  glm::vec3 position;
+};
+
+struct Mesh {
+  cuda::Buffer<Vertex> vertices;
+  cuda::Buffer<std::uint32_t> indices;
+  std::uint32_t indices_count;
+};
+
 class PathTracer {
 public:
   int max_iterations = 10000;
@@ -43,6 +56,8 @@ private:
   cuda::Buffer<DielectricMaterial> dev_dielectric_mat_;
 
   cuda::Buffer<glm::vec3> dev_image_;
+
+  Mesh cube_;
 
   int iteration_ = 0;
 

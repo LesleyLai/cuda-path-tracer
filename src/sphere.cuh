@@ -60,9 +60,9 @@ struct Sphere {
 }
 
 struct Triangle {
-  glm::vec3 pt0;
-  glm::vec3 pt1;
-  glm::vec3 pt2;
+  glm::vec3 pt0{};
+  glm::vec3 pt1{};
+  glm::vec3 pt2{};
 };
 
 [[nodiscard]] __host__ __device__ inline auto

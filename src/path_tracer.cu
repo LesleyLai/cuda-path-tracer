@@ -17,6 +17,10 @@
 
 #include <iterator>
 
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+
 #include <glm/gtx/compatibility.hpp>
 
 static const Sphere spheres[] = {
@@ -105,6 +109,8 @@ __device__ auto get_background_color(Ray r) -> glm::vec3
 
 __device__ auto ray_scene_intersection_test(Ray ray, Span<const Sphere> spheres,
                                             Span<const Triangle> triangles,
+                                            const Vertex* vertices,
+                                            Span<const std::uint32_t> indices,
                                             float t_min, float t_max,
                                             HitRecord& record) -> bool
 {
@@ -123,6 +129,23 @@ __device__ auto ray_scene_intersection_test(Ray ray, Span<const Sphere> spheres,
     HitRecord new_record;
     if (ray_triangle_intersection_test(ray, triangle.pt0, triangle.pt1,
                                        triangle.pt2, t_min, t_max,
+                                       new_record)) {
+      hit = true;
+      record = new_record;
+      t_max = new_record.t;
+    }
+  }
+  for (std::size_t i = 0; i < indices.size(); i += 3) {
+    const auto index0 = indices[i];
+    const auto index1 = indices[i + 1];
+    const auto index2 = indices[i + 2];
+
+    const auto p0 = vertices[index0].position;
+    const auto p1 = vertices[index1].position;
+    const auto p2 = vertices[index2].position;
+
+    HitRecord new_record;
+    if (ray_triangle_intersection_test(ray, p0, p1, p2, t_min, t_max,
                                        new_record)) {
       hit = true;
       record = new_record;
@@ -157,7 +180,8 @@ __global__ void path_tracing_kernel(
     glm::vec3* image, std::size_t iteration, Span<const Sphere> spheres,
     Span<const Triangle> triangles, Span<const Material> mat,
     Span<const DiffuseMateral> diffuse_mat, Span<const MetalMaterial> metal_mat,
-    Span<const DielectricMaterial> dielectric_mat)
+    Span<const DielectricMaterial> dielectric_mat, const Vertex* vertices,
+    Span<const std::uint32_t> indices)
 {
   const auto [x, y] = calculate_index_2d();
   if (x >= width || y >= height) return;
@@ -173,8 +197,8 @@ __global__ void path_tracing_kernel(
   for (int i = 0; i < 50; ++i) {
     HitRecord record;
     float t_max = std::numeric_limits<float>::max();
-    const bool hit = ray_scene_intersection_test(ray, spheres, triangles, 1e-5f,
-                                                 t_max, record);
+    const bool hit = ray_scene_intersection_test(
+        ray, spheres, triangles, vertices, indices, 1e-5f, t_max, record);
     if (!hit) {
       color *= get_background_color(ray);
       break;
@@ -264,7 +288,46 @@ __global__ void preview_kernel(unsigned int width, unsigned int height,
   }
 }
 
-PathTracer::PathTracer() = default;
+[[nodiscard]] static auto load_obj(const char* filename) -> Mesh
+{
+  Assimp::Importer importer;
+
+  const aiScene* scene = importer.ReadFile(filename, aiProcess_Triangulate);
+  if (!scene || !scene->HasMeshes()) {
+    throw std::runtime_error(fmt::format("Unable to load {}", filename));
+  }
+  const aiMesh* mesh = scene->mMeshes[0];
+
+  thrust::host_vector<Vertex> vertices;
+  for (unsigned i = 0; i != mesh->mNumVertices; i++) {
+    const aiVector3D v = mesh->mVertices[i];
+    // const aiVector3D n = mesh->mNormals[i];
+    // const aiVector3D t = mesh->mTextureCoords[0][i];
+    vertices.push_back(Vertex{{v.x + 10.f, v.z, v.y}});
+  }
+
+  thrust::host_vector<std::uint32_t> indices;
+  for (unsigned i = 0; i != mesh->mNumFaces; i++)
+    for (unsigned j = 0; j != 3; j++)
+      indices.push_back(mesh->mFaces[i].mIndices[j]);
+
+  Mesh mesh_gpu;
+  mesh_gpu.vertices = cuda::make_buffer<Vertex>(vertices.size());
+  mesh_gpu.indices = cuda::make_buffer<std::uint32_t>(indices.size());
+  mesh_gpu.indices_count = indices.size();
+
+  thrust::copy(vertices.begin(), vertices.end(),
+               thrust::device_pointer_cast(mesh_gpu.vertices.data()));
+  thrust::copy(indices.begin(), indices.end(),
+               thrust::device_pointer_cast(mesh_gpu.indices.data()));
+
+  return mesh_gpu;
+}
+
+PathTracer::PathTracer()
+{
+  cube_ = load_obj("models/cube.obj");
+}
 
 void PathTracer::path_trace(uchar4* dev_pbo, const Camera& camera,
                             unsigned int width, unsigned int height)
@@ -285,7 +348,8 @@ void PathTracer::path_trace(uchar4* dev_pbo, const Camera& camera,
       Span{dev_mat_.data(), std::size(mat)},
       Span{dev_diffuse_mat_.data(), std::size(diffuse_mat)},
       Span{dev_metal_mat_.data(), std::size(metal_mat)},
-      Span{dev_dielectric_mat_.data(), std::size(dielectric_mat)});
+      Span{dev_dielectric_mat_.data(), std::size(dielectric_mat)},
+      cube_.vertices.data(), Span{cube_.indices.data(), cube_.indices_count});
   check_CUDA_error("Path Tracing kernel");
   preview_kernel<<<full_blocks_per_grid, threads_per_block>>>(
       width, height, dev_image_.data(), dev_pbo);
