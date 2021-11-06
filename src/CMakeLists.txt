@@ -30,7 +30,8 @@ add_executable(app
         gui.cpp
         gui.hpp
         camera.cpp
-        camera.hpp)
+        camera.hpp
+        hit_record.hpp triangle.cuh)
 target_link_libraries(app PRIVATE
         common
         glfw::glfw

@@ -7,6 +7,7 @@
 #include "cuda_buffer.hpp"
 #include "ray.hpp"
 #include "sphere.cuh"
+#include "triangle.cuh"
 
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>

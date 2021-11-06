@@ -60,7 +60,7 @@ struct Index2D {
   unsigned int y = 0;
 };
 
-[[nodiscard]] __device__ auto calculate_index_2d() -> Index2D
+[[nodiscard]] __device__ constexpr auto calculate_index_2d() -> Index2D
 {
   const auto x = (blockIdx.x * blockDim.x) + threadIdx.x;
   const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
