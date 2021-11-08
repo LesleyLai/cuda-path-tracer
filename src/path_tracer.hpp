@@ -6,7 +6,7 @@
 
 #include "cuda_buffer.hpp"
 #include "ray.hpp"
-#include "sphere.cuh"
+#include "sphere.hpp"
 #include "triangle.cuh"
 
 #include <thrust/device_vector.h>
@@ -43,11 +43,20 @@ struct Mesh {
   std::uint32_t indices_count;
 };
 
+enum class ObjectType : std::uint32_t { sphere, triangle, mesh };
+struct Object {
+  ObjectType type;
+  std::uint32_t index;
+};
+
 class PathTracer {
 public:
   int max_iterations = 10000;
 
 private:
+  cuda::Buffer<Object> dev_objects_;
+  cuda::Buffer<std::uint32_t> dev_object_material_indices_;
+
   cuda::Buffer<Sphere> dev_spheres_;
   cuda::Buffer<Triangle> dev_triangles_;
 

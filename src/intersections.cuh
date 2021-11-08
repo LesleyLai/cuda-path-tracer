@@ -1,23 +1,14 @@
-#ifndef CUDA_PATH_TRACER_SPHERE_CUH
-#define CUDA_PATH_TRACER_SPHERE_CUH
+#ifndef CUDA_PATH_TRACER_INTERSECTIONS_CUH
+#define CUDA_PATH_TRACER_INTERSECTIONS_CUH
 
-#include <optional>
-
-#include "hit_record.hpp"
 #include "ray.hpp"
-
-struct Sphere {
-  glm::vec3 center = {};
-  float radius = 0;
-  std::size_t materal_id = 0;
-};
+#include "sphere.hpp"
 
 [[nodiscard]] __host__ __device__ auto inline ray_sphere_intersection_test(
     Ray r, Sphere sphere, HitRecord& record) -> bool
 {
   const auto center = sphere.center;
   const auto radius = sphere.radius;
-  const auto material_id = sphere.materal_id;
 
   const auto oc = r.origin - center;
 
@@ -40,7 +31,6 @@ struct Sphere {
                                                        : HitFaceSide::back;
     record.normal =
         record.side == HitFaceSide::front ? outward_normal : -outward_normal;
-    record.material_id = material_id;
     return true;
   };
 
@@ -50,4 +40,4 @@ struct Sphere {
   return false;
 }
 
-#endif // CUDA_PATH_TRACER_SPHERE_CUH
+#endif // CUDA_PATH_TRACER_INTERSECTIONS_CUH

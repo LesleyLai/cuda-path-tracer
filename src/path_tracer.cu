@@ -23,11 +23,19 @@
 
 #include <glm/gtx/compatibility.hpp>
 
+#include "intersections.cuh"
+
+static constexpr Object objects[] = {
+    {ObjectType::sphere, 0}, {ObjectType::sphere, 1},   {ObjectType::sphere, 2},
+    {ObjectType::sphere, 3}, {ObjectType::triangle, 0}, {ObjectType::mesh, 0},
+};
+static constexpr std::uint32_t material_indices[] = {0, 1, 2, 3, 1, 1};
+
 static const Sphere spheres[] = {
-    {{0.0f, -100.5f, -1.0f}, 100.f, 0},
-    {{0.0f, 0.0f, -1.0f}, 0.5f, 1},
-    {{-1.0f, 0.0f, -1.0f}, 0.5f, 2},
-    {{1.0f, 0.0f, -1.0f}, 0.5f, 3},
+    {{0.0f, -100.5f, -1.0f}, 100.f},
+    {{0.0f, 0.0f, -1.0f}, 0.5f},
+    {{-1.0f, 0.0f, -1.0f}, 0.5f},
+    {{1.0f, 0.0f, -1.0f}, 0.5f},
 };
 
 static const Triangle triangles[] = {{
@@ -107,51 +115,67 @@ __device__ auto get_background_color(Ray r) -> glm::vec3
   return glm::lerp(glm::vec3(0.5, 0.7, 1.0), glm::vec3(1.0, 1.0, 1.0), t);
 }
 
-__device__ auto ray_scene_intersection_test(Ray ray, Span<const Sphere> spheres,
-                                            Span<const Triangle> triangles,
-                                            const Vertex* vertices,
-                                            Span<const std::uint32_t> indices,
-                                            float t_min, float t_max,
-                                            HitRecord& record) -> bool
+__device__ auto ray_scene_intersection_test(
+    Ray ray, Span<const Object> objects,
+    const std::uint32_t* object_material_id, Span<const Sphere> spheres,
+    Span<const Triangle> triangles, const Vertex* vertices,
+    Span<const std::uint32_t> indices, float t_min, float t_max,
+    HitRecord& record) -> bool
 {
   bool hit = false;
-  for (const auto& sphere : spheres) {
-    HitRecord new_record;
-    if (ray_sphere_intersection_test(ray, sphere, new_record)) {
-      if (new_record.t <= t_max && new_record.t >= t_min) {
+
+  for (std::size_t i = 0; i < objects.size(); ++i) {
+    const Object obj = objects[i];
+    const std::uint32_t material_id = object_material_id[i];
+
+    switch (obj.type) {
+    case ObjectType::sphere: {
+      const auto sphere = spheres[obj.index];
+      HitRecord new_record;
+      if (ray_sphere_intersection_test(ray, sphere, new_record)) {
+        if (new_record.t <= t_max && new_record.t >= t_min) {
+          hit = true;
+          record = new_record;
+          record.material_id = material_id;
+          t_max = new_record.t;
+        }
+      }
+    } break;
+    case ObjectType::triangle: {
+      const auto triangle = triangles[obj.index];
+      HitRecord new_record;
+      if (ray_triangle_intersection_test(ray, triangle.pt0, triangle.pt1,
+                                         triangle.pt2, t_min, t_max,
+                                         new_record)) {
         hit = true;
         record = new_record;
+        record.material_id = material_id;
         t_max = new_record.t;
       }
-    }
-  }
-  for (const auto& triangle : triangles) {
-    HitRecord new_record;
-    if (ray_triangle_intersection_test(ray, triangle.pt0, triangle.pt1,
-                                       triangle.pt2, t_min, t_max,
-                                       new_record)) {
-      hit = true;
-      record = new_record;
-      t_max = new_record.t;
-    }
-  }
-  for (std::size_t i = 0; i < indices.size(); i += 3) {
-    const auto index0 = indices[i];
-    const auto index1 = indices[i + 1];
-    const auto index2 = indices[i + 2];
+    } break;
+    case ObjectType::mesh:
+      for (std::size_t j = 0; j < indices.size(); j += 3) {
+        const auto index0 = indices[j];
+        const auto index1 = indices[j + 1];
+        const auto index2 = indices[j + 2];
 
-    const auto p0 = vertices[index0].position;
-    const auto p1 = vertices[index1].position;
-    const auto p2 = vertices[index2].position;
+        const auto p0 = vertices[index0].position;
+        const auto p1 = vertices[index1].position;
+        const auto p2 = vertices[index2].position;
 
-    HitRecord new_record;
-    if (ray_triangle_intersection_test(ray, p0, p1, p2, t_min, t_max,
-                                       new_record)) {
-      hit = true;
-      record = new_record;
-      t_max = new_record.t;
+        HitRecord new_record;
+        if (ray_triangle_intersection_test(ray, p0, p1, p2, t_min, t_max,
+                                           new_record)) {
+          hit = true;
+          record = new_record;
+          record.material_id = material_id;
+          t_max = new_record.t;
+        }
+      }
+      break;
     }
   }
+
   return hit;
 }
 
@@ -177,7 +201,8 @@ __device__ static auto reflectance(float cosine, float ref_idx) -> float
 
 __global__ void path_tracing_kernel(
     unsigned int width, unsigned int height, glm::mat4 camera_matrix, float fov,
-    glm::vec3* image, std::size_t iteration, Span<const Sphere> spheres,
+    glm::vec3* image, std::size_t iteration, Span<const Object> objects,
+    const std::uint32_t* object_material_indices, Span<const Sphere> spheres,
     Span<const Triangle> triangles, Span<const Material> mat,
     Span<const DiffuseMateral> diffuse_mat, Span<const MetalMaterial> metal_mat,
     Span<const DielectricMaterial> dielectric_mat, const Vertex* vertices,
@@ -198,7 +223,8 @@ __global__ void path_tracing_kernel(
     HitRecord record;
     float t_max = std::numeric_limits<float>::max();
     const bool hit = ray_scene_intersection_test(
-        ray, spheres, triangles, vertices, indices, 1e-5f, t_max, record);
+        ray, objects, object_material_indices, spheres, triangles, vertices,
+        indices, 1e-5f, t_max, record);
     if (!hit) {
       color *= get_background_color(ray);
       break;
@@ -343,7 +369,9 @@ void PathTracer::path_trace(uchar4* dev_pbo, const Camera& camera,
 
   path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
       width, height, camera.camera_matrix(), camera.fov(), dev_image_.data(),
-      iteration_, Span{dev_spheres_.data(), std::size(spheres)},
+      iteration_, Span{dev_objects_.data(), std::size(objects)},
+      dev_object_material_indices_.data(),
+      Span{dev_spheres_.data(), std::size(spheres)},
       Span{dev_triangles_.data(), std::size(triangles)},
       Span{dev_mat_.data(), std::size(mat)},
       Span{dev_diffuse_mat_.data(), std::size(diffuse_mat)},
@@ -383,6 +411,10 @@ template <typename T>
 
 void PathTracer::create_buffers(unsigned int width, unsigned int height)
 {
+  dev_objects_ = create_buffer_from_cpu_data(Span{objects});
+  dev_object_material_indices_ =
+      create_buffer_from_cpu_data(Span{material_indices});
+
   dev_spheres_ = create_buffer_from_cpu_data(Span{spheres});
   dev_triangles_ = create_buffer_from_cpu_data(Span{triangles});
   dev_mat_ = create_buffer_from_cpu_data(Span{mat});

@@ -3,7 +3,7 @@ find_package(CUDAToolkit REQUIRED)
 find_package(fmt REQUIRED)
 find_package(glm REQUIRED)
 
-add_library(common INTERFACE sphere.cuh ray.hpp span.hpp)
+add_library(common INTERFACE sphere.hpp ray.hpp span.hpp)
 target_link_libraries(common INTERFACE fmt::fmt glm::glm)
 target_include_directories(common INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -31,7 +31,10 @@ add_executable(app
         gui.hpp
         camera.cpp
         camera.hpp
-        hit_record.hpp triangle.cuh)
+        hit_record.hpp
+        intersections.cuh
+        triangle.cuh
+        )
 target_link_libraries(app PRIVATE
         common
         glfw::glfw
