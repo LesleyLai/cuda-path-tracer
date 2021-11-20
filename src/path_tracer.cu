@@ -115,61 +115,75 @@ __device__ auto get_background_color(Ray r) -> glm::vec3
   return glm::lerp(glm::vec3(0.5, 0.7, 1.0), glm::vec3(1.0, 1.0, 1.0), t);
 }
 
-__device__ auto ray_scene_intersection_test(
-    Ray ray, Span<const Object> objects,
-    const std::uint32_t* object_material_id, Span<const Sphere> spheres,
-    Span<const Triangle> triangles, const Vertex* vertices,
-    Span<const std::uint32_t> indices, HitRecord& record) -> bool
+struct Aggregate {
+  Span<const Object> objects;
+  const std::uint32_t* object_material_indices = nullptr;
+  Span<const Sphere> spheres;
+  Span<const Triangle> triangles;
+};
+
+__device__ auto ray_mesh_intersection_test(Ray ray, const Vertex* vertices,
+                                           Span<const std::uint32_t> indices,
+                                           HitRecord& record) -> bool
+{
+  bool hit = false;
+  for (std::size_t j = 0; j < indices.size(); j += 3) {
+    const auto index0 = indices[j];
+    const auto index1 = indices[j + 1];
+    const auto index2 = indices[j + 2];
+
+    const auto p0 = vertices[index0].position;
+    const auto p1 = vertices[index1].position;
+    const auto p2 = vertices[index2].position;
+
+    if (ray_triangle_intersection_test(ray, p0, p1, p2, record)) {
+      hit = true;
+      ray.t_max = record.t;
+    }
+  }
+  return hit;
+}
+
+__device__ auto ray_object_intersection_test(Ray ray, Object obj,
+                                             Aggregate aggregate,
+                                             const Vertex* vertices,
+                                             Span<const std::uint32_t> indices,
+                                             HitRecord& record) -> bool
+{
+  switch (obj.type) {
+  case ObjectType::sphere: {
+    const auto sphere = aggregate.spheres[obj.index];
+    return ray_sphere_intersection_test(ray, sphere, record);
+  }
+  case ObjectType::triangle: {
+    const auto triangle = aggregate.triangles[obj.index];
+    return ray_triangle_intersection_test(ray, triangle.pt0, triangle.pt1,
+                                          triangle.pt2, record);
+  }
+  case ObjectType::mesh:
+    return ray_mesh_intersection_test(ray, vertices, indices, record);
+  }
+  // unreachable
+  return false;
+}
+
+__device__ auto ray_scene_intersection_test(Ray ray, Aggregate aggregate,
+                                            const Vertex* vertices,
+                                            Span<const std::uint32_t> indices,
+                                            HitRecord& record) -> bool
 {
   bool hit = false;
 
+  const auto objects = aggregate.objects;
+  const auto* object_material_indices = aggregate.object_material_indices;
+
   for (std::size_t i = 0; i < objects.size(); ++i) {
     const Object obj = objects[i];
-    const std::uint32_t material_id = object_material_id[i];
-
-    switch (obj.type) {
-    case ObjectType::sphere: {
-      const auto sphere = spheres[obj.index];
-      HitRecord new_record;
-      if (ray_sphere_intersection_test(ray, sphere, new_record)) {
-        if (new_record.t <= ray.t_max && new_record.t >= ray.t_min) {
-          hit = true;
-          record = new_record;
-          record.material_id = material_id;
-          ray.t_max = new_record.t;
-        }
-      }
-    } break;
-    case ObjectType::triangle: {
-      const auto triangle = triangles[obj.index];
-      HitRecord new_record;
-      if (ray_triangle_intersection_test(ray, triangle.pt0, triangle.pt1,
-                                         triangle.pt2, new_record)) {
-        hit = true;
-        record = new_record;
-        record.material_id = material_id;
-        ray.t_max = new_record.t;
-      }
-    } break;
-    case ObjectType::mesh:
-      for (std::size_t j = 0; j < indices.size(); j += 3) {
-        const auto index0 = indices[j];
-        const auto index1 = indices[j + 1];
-        const auto index2 = indices[j + 2];
-
-        const auto p0 = vertices[index0].position;
-        const auto p1 = vertices[index1].position;
-        const auto p2 = vertices[index2].position;
-
-        HitRecord new_record;
-        if (ray_triangle_intersection_test(ray, p0, p1, p2, new_record)) {
-          hit = true;
-          record = new_record;
-          record.material_id = material_id;
-          ray.t_max = new_record.t;
-        }
-      }
-      break;
+    if (ray_object_intersection_test(ray, obj, aggregate, vertices, indices,
+                                     record)) {
+      hit = true;
+      record.material_id = object_material_indices[i];
+      ray.t_max = record.t;
     }
   }
 
@@ -198,10 +212,9 @@ __device__ static auto reflectance(float cosine, float ref_idx) -> float
 
 __global__ void path_tracing_kernel(
     unsigned int width, unsigned int height, glm::mat4 camera_matrix, float fov,
-    glm::vec3* image, std::size_t iteration, Span<const Object> objects,
-    const std::uint32_t* object_material_indices, Span<const Sphere> spheres,
-    Span<const Triangle> triangles, Span<const Material> mat,
-    Span<const DiffuseMateral> diffuse_mat, Span<const MetalMaterial> metal_mat,
+    glm::vec3* image, std::size_t iteration, Aggregate aggregate,
+    Span<const Material> mat, Span<const DiffuseMateral> diffuse_mat,
+    Span<const MetalMaterial> metal_mat,
     Span<const DielectricMaterial> dielectric_mat, const Vertex* vertices,
     Span<const std::uint32_t> indices)
 {
@@ -218,9 +231,8 @@ __global__ void path_tracing_kernel(
   glm::vec3 color{1.0f, 1.0f, 1.0f};
   for (int i = 0; i < 50; ++i) {
     HitRecord record;
-    const bool hit = ray_scene_intersection_test(
-        ray, objects, object_material_indices, spheres, triangles, vertices,
-        indices, record);
+    const bool hit =
+        ray_scene_intersection_test(ray, aggregate, vertices, indices, record);
     if (!hit) {
       color *= get_background_color(ray);
       break;
@@ -364,13 +376,15 @@ void PathTracer::path_trace(uchar4* dev_pbo, const Camera& camera,
   const auto blocks_y = (height + block_size - 1) / block_size;
   const dim3 full_blocks_per_grid(blocks_x, blocks_y);
 
+  Aggregate aggregate;
+  aggregate.objects = Span{dev_objects_.data(), std::size(objects)};
+  aggregate.object_material_indices = dev_object_material_indices_.data();
+  aggregate.spheres = Span{dev_spheres_.data(), std::size(spheres)};
+  aggregate.triangles = Span{dev_triangles_.data(), std::size(triangles)};
+
   path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
       width, height, camera.camera_matrix(), camera.fov(), dev_image_.data(),
-      iteration_, Span{dev_objects_.data(), std::size(objects)},
-      dev_object_material_indices_.data(),
-      Span{dev_spheres_.data(), std::size(spheres)},
-      Span{dev_triangles_.data(), std::size(triangles)},
-      Span{dev_mat_.data(), std::size(mat)},
+      iteration_, aggregate, Span{dev_mat_.data(), std::size(mat)},
       Span{dev_diffuse_mat_.data(), std::size(diffuse_mat)},
       Span{dev_metal_mat_.data(), std::size(metal_mat)},
       Span{dev_dielectric_mat_.data(), std::size(dielectric_mat)},

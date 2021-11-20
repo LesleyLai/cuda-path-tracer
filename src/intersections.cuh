@@ -35,8 +35,8 @@
   };
 
   // Get the smaller non-negative value of t1, t2
-  if (t1 >= 0) { return hit_record_from_t(t1); }
-  if (t2 >= 0) { return hit_record_from_t(t2); }
+  if (t1 >= r.t_min && t1 <= r.t_max) { return hit_record_from_t(t1); }
+  if (t2 >= r.t_min && t2 <= r.t_max) { return hit_record_from_t(t2); }
   return false;
 }
 
