@@ -210,6 +210,78 @@ __device__ static auto reflectance(float cosine, float ref_idx) -> float
   return r0 + (1 - r0) * pow((1 - cosine), 5);
 }
 
+__device__ void evaluate_material(Ray& ray, const HitRecord record,
+                                  thrust::default_random_engine& rng,
+                                  glm::vec3& color, Span<const Material> mat,
+                                  Span<const DiffuseMateral> diffuse_mat,
+                                  Span<const MetalMaterial> metal_mat,
+                                  Span<const DielectricMaterial> dielectric_mat)
+{
+  ray.origin = record.point - 1e-4f *
+                                  glm::sign(dot(ray.direction, record.normal)) *
+                                  record.normal;
+  // material stuff
+  const Material& material = mat[record.material_id];
+  switch (material.type) {
+  case Material::Type::Diffuse: {
+    auto scatter_direction =
+        glm::normalize(record.normal + random_in_unit_sphere(rng));
+
+    // Catch degenerated case
+    if (abs(scatter_direction.x) < 1e-8 && abs(scatter_direction.y) < 1e-8 &&
+        abs(scatter_direction.z) < 1e-8) {
+      scatter_direction = record.normal;
+    }
+
+    ray.direction = scatter_direction;
+    color *= diffuse_mat[material.index].albedo;
+  } break;
+  case Material::Type::Metal: {
+    const auto metal = metal_mat[material.index];
+    const auto reflected = glm::reflect(ray.direction, record.normal);
+    const auto scatter_direction =
+        reflected + metal.fuzz * random_in_unit_sphere(rng);
+    ray.direction = scatter_direction;
+    if (dot(scatter_direction, record.normal) > 0) {
+      color *= metal.albedo;
+    } else {
+      color = glm::vec3(0.0, 0.0, 0.0);
+    }
+  } break;
+  case Material::Type::Dielectric: {
+    const auto dielectric = dielectric_mat[material.index];
+    const auto refraction_ratio = record.side == HitFaceSide::front
+                                      ? (1.0f / dielectric.refraction_index)
+                                      : dielectric.refraction_index;
+
+    const auto unit_direction = normalize(ray.direction);
+    const float cos_theta = min(dot(-unit_direction, record.normal), 1.0f);
+    const float sin_theta = sqrtf(1.0f - cos_theta * cos_theta);
+
+    const bool cannot_refract = refraction_ratio * sin_theta > 1.0;
+    thrust::uniform_real_distribution<float> dist(0.0, 1.0);
+    const glm::vec3 direction = [&]() {
+      if (cannot_refract ||
+          reflectance(cos_theta, refraction_ratio) > dist(rng)) {
+        return reflect(unit_direction, record.normal);
+      } else {
+        return refract(unit_direction, record.normal, refraction_ratio);
+      }
+    }();
+
+    ray = Ray{record.point, 1e-5, direction, std::numeric_limits<float>::max()};
+  } break;
+  }
+}
+
+[[nodiscard]] __device__ auto gamma_correction(glm::vec3 color) -> glm::vec3
+{
+  color.x = glm::pow(color.x, 1.f / 2.2f);
+  color.y = glm::pow(color.y, 1.f / 2.2f);
+  color.z = glm::pow(color.z, 1.f / 2.2f);
+  return color;
+}
+
 __global__ void path_tracing_kernel(
     unsigned int width, unsigned int height, glm::mat4 camera_matrix, float fov,
     glm::vec3* image, std::size_t iteration, Aggregate aggregate,
@@ -224,7 +296,6 @@ __global__ void path_tracing_kernel(
 
   thrust::default_random_engine rng(hash(hash(index) ^ iteration));
 
-  // ray gen
   auto ray = raygen(camera_matrix, fov, width, height, x, y, rng);
 
   // Path tracing
@@ -237,67 +308,11 @@ __global__ void path_tracing_kernel(
       color *= get_background_color(ray);
       break;
     }
-    ray.origin =
-        record.point -
-        1e-4f * glm::sign(dot(ray.direction, record.normal)) * record.normal;
-    // material stuff
-    const Material& material = mat[record.material_id];
-    switch (material.type) {
-    case Material::Type::Diffuse: {
-      auto scatter_direction =
-          glm::normalize(record.normal + random_in_unit_sphere(rng));
-
-      // Catch degenerated case
-      if (abs(scatter_direction.x) < 1e-8 && abs(scatter_direction.y) < 1e-8 &&
-          abs(scatter_direction.z) < 1e-8) {
-        scatter_direction = record.normal;
-      }
-
-      ray.direction = scatter_direction;
-      color *= diffuse_mat[material.index].albedo;
-    } break;
-    case Material::Type::Metal: {
-      const auto metal = metal_mat[material.index];
-      const auto reflected = glm::reflect(ray.direction, record.normal);
-      const auto scatter_direction =
-          reflected + metal.fuzz * random_in_unit_sphere(rng);
-      ray.direction = scatter_direction;
-      if (dot(scatter_direction, record.normal) > 0) {
-        color *= metal.albedo;
-      } else {
-        color = glm::vec3(0.0, 0.0, 0.0);
-      }
-    } break;
-    case Material::Type::Dielectric: {
-      const auto dielectric = dielectric_mat[material.index];
-      const auto refraction_ratio = record.side == HitFaceSide::front
-                                        ? (1.0f / dielectric.refraction_index)
-                                        : dielectric.refraction_index;
-
-      const auto unit_direction = normalize(ray.direction);
-      const float cos_theta = min(dot(-unit_direction, record.normal), 1.0f);
-      const float sin_theta = sqrtf(1.0f - cos_theta * cos_theta);
-
-      const bool cannot_refract = refraction_ratio * sin_theta > 1.0;
-      thrust::uniform_real_distribution<float> dist(0.0, 1.0);
-      const glm::vec3 direction = [&]() {
-        if (cannot_refract ||
-            reflectance(cos_theta, refraction_ratio) > dist(rng)) {
-          return reflect(unit_direction, record.normal);
-        } else {
-          return refract(unit_direction, record.normal, refraction_ratio);
-        }
-      }();
-
-      ray =
-          Ray{record.point, 1e-5, direction, std::numeric_limits<float>::max()};
-    } break;
-    }
+    evaluate_material(ray, record, rng, color, mat, diffuse_mat, metal_mat,
+                      dielectric_mat);
   }
-  // gamma correction
-  color.x = glm::pow(color.x, 1.f / 2.2f);
-  color.y = glm::pow(color.y, 1.f / 2.2f);
-  color.z = glm::pow(color.z, 1.f / 2.2f);
+
+  color = gamma_correction(color);
 
   // Final gathering
   const auto sample_count = static_cast<float>(iteration + 1);
