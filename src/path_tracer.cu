@@ -105,7 +105,7 @@ struct Index2D {
   const auto world_origin = glm::vec3(camera_matrix * glm::vec4(origin, 1.0));
   const auto world_direction =
       glm::normalize(glm::vec3(camera_matrix * glm::vec4(direction, 0.0)));
-  return Ray{world_origin, world_direction};
+  return Ray{world_origin, 1e-4, world_direction, FLT_MAX};
 }
 
 __device__ auto get_background_color(Ray r) -> glm::vec3
@@ -119,8 +119,7 @@ __device__ auto ray_scene_intersection_test(
     Ray ray, Span<const Object> objects,
     const std::uint32_t* object_material_id, Span<const Sphere> spheres,
     Span<const Triangle> triangles, const Vertex* vertices,
-    Span<const std::uint32_t> indices, float t_min, float t_max,
-    HitRecord& record) -> bool
+    Span<const std::uint32_t> indices, HitRecord& record) -> bool
 {
   bool hit = false;
 
@@ -133,11 +132,11 @@ __device__ auto ray_scene_intersection_test(
       const auto sphere = spheres[obj.index];
       HitRecord new_record;
       if (ray_sphere_intersection_test(ray, sphere, new_record)) {
-        if (new_record.t <= t_max && new_record.t >= t_min) {
+        if (new_record.t <= ray.t_max && new_record.t >= ray.t_min) {
           hit = true;
           record = new_record;
           record.material_id = material_id;
-          t_max = new_record.t;
+          ray.t_max = new_record.t;
         }
       }
     } break;
@@ -145,12 +144,11 @@ __device__ auto ray_scene_intersection_test(
       const auto triangle = triangles[obj.index];
       HitRecord new_record;
       if (ray_triangle_intersection_test(ray, triangle.pt0, triangle.pt1,
-                                         triangle.pt2, t_min, t_max,
-                                         new_record)) {
+                                         triangle.pt2, new_record)) {
         hit = true;
         record = new_record;
         record.material_id = material_id;
-        t_max = new_record.t;
+        ray.t_max = new_record.t;
       }
     } break;
     case ObjectType::mesh:
@@ -164,12 +162,11 @@ __device__ auto ray_scene_intersection_test(
         const auto p2 = vertices[index2].position;
 
         HitRecord new_record;
-        if (ray_triangle_intersection_test(ray, p0, p1, p2, t_min, t_max,
-                                           new_record)) {
+        if (ray_triangle_intersection_test(ray, p0, p1, p2, new_record)) {
           hit = true;
           record = new_record;
           record.material_id = material_id;
-          t_max = new_record.t;
+          ray.t_max = new_record.t;
         }
       }
       break;
@@ -221,10 +218,9 @@ __global__ void path_tracing_kernel(
   glm::vec3 color{1.0f, 1.0f, 1.0f};
   for (int i = 0; i < 50; ++i) {
     HitRecord record;
-    float t_max = std::numeric_limits<float>::max();
     const bool hit = ray_scene_intersection_test(
         ray, objects, object_material_indices, spheres, triangles, vertices,
-        indices, 1e-5f, t_max, record);
+        indices, record);
     if (!hit) {
       color *= get_background_color(ray);
       break;
@@ -281,7 +277,8 @@ __global__ void path_tracing_kernel(
         }
       }();
 
-      ray = Ray{record.point, direction};
+      ray =
+          Ray{record.point, 1e-5, direction, std::numeric_limits<float>::max()};
     } break;
     }
   }

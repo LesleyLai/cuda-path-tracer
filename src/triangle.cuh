@@ -15,10 +15,10 @@ triangle_normal(glm::vec3 pt0, glm::vec3 pt1, glm::vec3 pt2)
 
 [[nodiscard]] __host__ __device__ inline auto
 ray_triangle_intersection_test(Ray r, glm::vec3 pt0, glm::vec3 pt1,
-                               glm::vec3 pt2, float t_min, float t_max,
-                               HitRecord& record) -> bool
+                               glm::vec3 pt2, HitRecord& record) -> bool
 {
-  const auto [ve, vd] = r;
+  const auto ve = r.origin;
+  const auto vd = r.direction;
   const float a = pt0.x - pt1.x;
   const float b = pt0.y - pt1.y;
   const float c = pt0.z - pt1.z;
@@ -43,7 +43,7 @@ ray_triangle_intersection_test(Ray r, glm::vec3 pt0, glm::vec3 pt1,
 
   // compute t
   const float t = -(f * ak_jb + e * jc_al + d * bl_kc) / M;
-  if ((t < t_min) || (t > t_max)) return false;
+  if ((t < r.t_min) || (t > r.t_max)) return false;
 
   // compute gamma
   const float gamma = (i * ak_jb + h * jc_al + g * bl_kc) / M;
