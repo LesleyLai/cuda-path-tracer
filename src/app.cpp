@@ -39,7 +39,8 @@ App::App()
         App* app = static_cast<App*>(glfwGetWindowUserPointer(window));
 
         app->preview_->recreate_image(width, height);
-        app->path_tracer_.resize_image(width, height);
+        app->path_tracer_.resize_image(static_cast<unsigned int>(width),
+                                       static_cast<unsigned int>(height));
 
         glViewport(0, 0, width, height);
       });
@@ -57,6 +58,7 @@ App::App()
       }; break;
       default: break;
       }
+      break;
     case GLFW_REPEAT: {
       switch (key) {
       case GLFW_KEY_W:
@@ -146,7 +148,8 @@ App::App()
 
   const auto [width, height] = window_.resolution();
   preview_ = std::make_unique<PreviewRenderer>(width, height);
-  path_tracer_.create_buffers(width, height);
+  path_tracer_.create_buffers(static_cast<unsigned int>(width),
+                              static_cast<unsigned int>(height));
 
   init_imgui(window_.get());
 }
@@ -160,8 +163,9 @@ void App::run_cuda()
 {
   preview_->map_pbo([&](uchar4* dev_pbo) {
     const auto resolution = window_.resolution();
-    path_tracer_.path_trace(dev_pbo, camera_, resolution.width,
-                            resolution.height);
+    path_tracer_.path_trace(dev_pbo, camera_,
+                            static_cast<unsigned int>(resolution.width),
+                            static_cast<unsigned int>(resolution.height));
   });
 }
 

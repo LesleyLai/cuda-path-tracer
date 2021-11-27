@@ -427,7 +427,7 @@ void PathTracer::resize_image(unsigned int width, unsigned int height)
 }
 
 template <typename T>
-[[nodiscard]] auto create_buffer_from_cpu_data(Span<const T> span)
+[[nodiscard]] static auto create_buffer_from_cpu_data(Span<const T> span)
 {
   auto dev_buffer = cuda::make_buffer<T>(span.size());
   CUDA_CHECK(cudaMemcpy(dev_buffer.data(), span.data(), span.size() * sizeof(T),
