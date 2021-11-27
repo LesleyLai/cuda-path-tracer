@@ -14,7 +14,7 @@ private:
   float fov_ = glm::pi<float>() / 2.f;
 
 public:
-  static constexpr float default_speed = 0.01;
+  static constexpr float default_speed = 0.01f;
   float speed = default_speed;
 
   [[nodiscard]] auto position() const noexcept -> glm::vec3

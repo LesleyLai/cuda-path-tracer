@@ -46,7 +46,7 @@ void ToolTip(const char* desc, const char* shortcut = nullptr)
     if (shortcut) {
       ImGui::SameLine();
       ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-      ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.8);
+      ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.8f);
       ImGui::Text("(%s)", shortcut);
       ImGui::PopStyleVar();
       ImGui::PopTextWrapPos();
@@ -103,7 +103,7 @@ void draw_path_tracer_gui(PathTracer& path_tracer)
 
   ImGui::NewLine();
   ImGui::Text("Movement:");
-  ImGui::SliderFloat("Speed", &camera.speed, 0.001, 100, "%.3f",
+  ImGui::SliderFloat("Speed", &camera.speed, 0.001f, 100, "%.3f",
                      ImGuiSliderFlags_Logarithmic);
 
   return pathtracer_restart_required;

@@ -5,8 +5,7 @@ project(cuda_path_tracer VERSION 0.0.0 LANGUAGES CXX CUDA)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" "${CMAKE_BINARY_DIR}")
 
 include("cmake/StandardProjectSettings.cmake")
-include("cmake/StaticAnalyzers.cmake")
-
+include("cmake/compiler.cmake")
 include("cmake/conan.cmake")
 run_conan()
 

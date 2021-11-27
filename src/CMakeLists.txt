@@ -4,7 +4,9 @@ find_package(fmt REQUIRED)
 find_package(glm REQUIRED)
 
 add_library(common INTERFACE sphere.hpp ray.hpp span.hpp)
-target_link_libraries(common INTERFACE fmt::fmt glm::glm)
+target_link_libraries(common INTERFACE fmt::fmt glm::glm
+        cuda_pt_compiler_warnings
+        cuda_pt_compiler_options)
 target_include_directories(common INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
 find_package(assimp)
@@ -44,13 +46,6 @@ target_link_libraries(app PRIVATE
         third-party::imgui_bindings
         CUDA::cudart)
 set_property(TARGET app PROPERTY CUDA_ARCHITECTURES OFF)
-target_compile_options(
-        app PRIVATE
-        $<$<COMPILE_LANGUAGE:CUDA>:
-        --expt-relaxed-constexpr
-        -Xcudafe --diag_suppress=esa_on_defaulted_function_ignored
-        >
-)
 
 add_custom_target(assets
         COMMAND ${CMAKE_COMMAND} -E copy_directory
