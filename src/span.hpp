@@ -1,6 +1,8 @@
 #ifndef CUDA_PATH_TRACER_SPAN_HPP
 #define CUDA_PATH_TRACER_SPAN_HPP
 
+#include <cassert>
+
 #ifdef __NVCC__
 
 #define HOST_DEVICE __host__ __device__

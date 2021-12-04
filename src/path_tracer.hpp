@@ -5,31 +5,12 @@
 #include <glm/glm.hpp>
 
 #include "cuda_buffer.hpp"
+#include "gpu_scene.hpp"
+#include "material.hpp"
 #include "ray.hpp"
-#include "sphere.hpp"
-#include "triangle.cuh"
 
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
-
-struct Material {
-  enum struct Type { Diffuse, Metal, Dielectric };
-  Type type = Type::Diffuse;
-  std::size_t index = 0;
-};
-
-struct DiffuseMateral {
-  glm::vec3 albedo;
-};
-
-struct MetalMaterial {
-  glm::vec3 albedo;
-  float fuzz = 0;
-};
-
-struct DielectricMaterial {
-  float refraction_index = 1.0;
-};
 
 class Camera;
 
@@ -43,23 +24,12 @@ struct Mesh {
   std::uint32_t indices_count;
 };
 
-enum class ObjectType : std::uint32_t { sphere, triangle, mesh };
-struct Object {
-  ObjectType type;
-  std::uint32_t index;
-};
-
 class PathTracer {
 public:
   int max_iterations = 10000;
 
 private:
-  cuda::Buffer<Object> dev_objects_;
-  cuda::Buffer<std::uint32_t> dev_object_material_indices_;
-
-  cuda::Buffer<Sphere> dev_spheres_;
-  cuda::Buffer<Triangle> dev_triangles_;
-
+  GPUAggregate aggregate_;
   cuda::Buffer<Material> dev_mat_;
   cuda::Buffer<DiffuseMateral> dev_diffuse_mat_;
   cuda::Buffer<MetalMaterial> dev_metal_mat_;

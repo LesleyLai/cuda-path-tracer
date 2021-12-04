@@ -115,13 +115,6 @@ __device__ auto get_background_color(Ray r) -> glm::vec3
   return glm::lerp(glm::vec3(0.5, 0.7, 1.0), glm::vec3(1.0, 1.0, 1.0), t);
 }
 
-struct Aggregate {
-  Span<const Object> objects;
-  const std::uint32_t* object_material_indices = nullptr;
-  Span<const Sphere> spheres;
-  Span<const Triangle> triangles;
-};
-
 __device__ auto ray_mesh_intersection_test(Ray ray, const Vertex* vertices,
                                            Span<const std::uint32_t> indices,
                                            HitRecord& record) -> bool
@@ -145,7 +138,7 @@ __device__ auto ray_mesh_intersection_test(Ray ray, const Vertex* vertices,
 }
 
 __device__ auto ray_object_intersection_test(Ray ray, Object obj,
-                                             Aggregate aggregate,
+                                             AggregateView aggregate,
                                              const Vertex* vertices,
                                              Span<const std::uint32_t> indices,
                                              HitRecord& record) -> bool
@@ -167,7 +160,7 @@ __device__ auto ray_object_intersection_test(Ray ray, Object obj,
   return false;
 }
 
-__device__ auto ray_scene_intersection_test(Ray ray, Aggregate aggregate,
+__device__ auto ray_scene_intersection_test(Ray ray, AggregateView aggregate,
                                             const Vertex* vertices,
                                             Span<const std::uint32_t> indices,
                                             HitRecord& record) -> bool
@@ -284,7 +277,7 @@ __device__ void evaluate_material(Ray& ray, const HitRecord record,
 
 __global__ void path_tracing_kernel(
     unsigned int width, unsigned int height, glm::mat4 camera_matrix, float fov,
-    glm::vec3* image, std::size_t iteration, Aggregate aggregate,
+    glm::vec3* image, std::size_t iteration, AggregateView aggregate,
     Span<const Material> mat, Span<const DiffuseMateral> diffuse_mat,
     Span<const MetalMaterial> metal_mat,
     Span<const DielectricMaterial> dielectric_mat, const Vertex* vertices,
@@ -391,15 +384,10 @@ void PathTracer::path_trace(uchar4* dev_pbo, const Camera& camera,
   const auto blocks_y = (height + block_size - 1) / block_size;
   const dim3 full_blocks_per_grid(blocks_x, blocks_y);
 
-  Aggregate aggregate;
-  aggregate.objects = Span{dev_objects_.data(), std::size(objects)};
-  aggregate.object_material_indices = dev_object_material_indices_.data();
-  aggregate.spheres = Span{dev_spheres_.data(), std::size(spheres)};
-  aggregate.triangles = Span{dev_triangles_.data(), std::size(triangles)};
-
   path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
       width, height, camera.camera_matrix(), camera.fov(), dev_image_.data(),
-      iteration_, aggregate, Span{dev_mat_.data(), std::size(mat)},
+      iteration_, AggregateView{aggregate_},
+      Span{dev_mat_.data(), std::size(mat)},
       Span{dev_diffuse_mat_.data(), std::size(diffuse_mat)},
       Span{dev_metal_mat_.data(), std::size(metal_mat)},
       Span{dev_dielectric_mat_.data(), std::size(dielectric_mat)},
@@ -437,12 +425,17 @@ template <typename T>
 
 void PathTracer::create_buffers(unsigned int width, unsigned int height)
 {
-  dev_objects_ = create_buffer_from_cpu_data(Span{objects});
-  dev_object_material_indices_ =
+  aggregate_.objects = create_buffer_from_cpu_data(Span{objects});
+  aggregate_.object_count = std::size(objects);
+  aggregate_.object_material_indices =
       create_buffer_from_cpu_data(Span{material_indices});
 
-  dev_spheres_ = create_buffer_from_cpu_data(Span{spheres});
-  dev_triangles_ = create_buffer_from_cpu_data(Span{triangles});
+  aggregate_.spheres = create_buffer_from_cpu_data(Span{spheres});
+  aggregate_.sphere_count = std::size(spheres);
+
+  aggregate_.triangles = create_buffer_from_cpu_data(Span{triangles});
+  aggregate_.triangle_count = std::size(triangles);
+
   dev_mat_ = create_buffer_from_cpu_data(Span{mat});
   dev_diffuse_mat_ = create_buffer_from_cpu_data(Span{diffuse_mat});
   dev_metal_mat_ = create_buffer_from_cpu_data(Span{metal_mat});

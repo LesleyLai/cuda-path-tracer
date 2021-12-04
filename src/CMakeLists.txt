@@ -35,8 +35,8 @@ add_executable(app
         camera.hpp
         hit_record.hpp
         intersections.cuh
-        triangle.cuh
-        )
+        triangle.hpp
+        gpu_scene.hpp material.hpp)
 target_link_libraries(app PRIVATE
         common
         glfw::glfw
