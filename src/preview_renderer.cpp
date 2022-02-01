@@ -29,7 +29,7 @@ static constexpr GLuint tex_coords_location = 1;
   const auto size_tex_data =
       static_cast<GLsizeiptr>(sizeof(GLubyte) * values_count);
 
-  // Generate a buffer ID called a PBO (Pixel Buffer Object)
+  // Generate a buffer ID called a PBO (Pixel Buffer GPUObject)
   glGenBuffers(1, &pbo);
   // Make this the current UNPACK buffer (OpenGL is state-based)
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);

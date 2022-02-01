@@ -1,6 +1,7 @@
 #include "path_tracer.hpp"
 
 #include "camera.hpp"
+#include "cuda_buffer.hpp"
 #include "distributions.cuh"
 #include "span.hpp"
 
@@ -24,25 +25,6 @@
 #include <glm/gtx/compatibility.hpp>
 
 #include "intersections.cuh"
-
-static constexpr Object objects[] = {
-    {ObjectType::sphere, 0}, {ObjectType::sphere, 1},   {ObjectType::sphere, 2},
-    {ObjectType::sphere, 3}, {ObjectType::triangle, 0}, {ObjectType::mesh, 0},
-};
-static constexpr std::uint32_t material_indices[] = {0, 1, 2, 3, 1, 1};
-
-static const Sphere spheres[] = {
-    {{0.0f, -100.5f, -1.0f}, 100.f},
-    {{0.0f, 0.0f, -1.0f}, 0.5f},
-    {{-1.0f, 0.0f, -1.0f}, 0.5f},
-    {{1.0f, 0.0f, -1.0f}, 0.5f},
-};
-
-static const Triangle triangles[] = {{
-    {0.0f, 0.0f, 2.0f},
-    {0.0f, 10.0f, 2.0f},
-    {10.0f, 0.0f, 2.0f},
-}};
 
 static constexpr Material mat[] = {{Material::Type::Diffuse, 0},
                                    {Material::Type::Diffuse, 1},
@@ -137,7 +119,7 @@ __device__ auto ray_mesh_intersection_test(Ray ray, const Vertex* vertices,
   return hit;
 }
 
-__device__ auto ray_object_intersection_test(Ray ray, Object obj,
+__device__ auto ray_object_intersection_test(Ray ray, GPUObject obj,
                                              AggregateView aggregate,
                                              const Vertex* vertices,
                                              Span<const std::uint32_t> indices,
@@ -171,7 +153,7 @@ __device__ auto ray_scene_intersection_test(Ray ray, AggregateView aggregate,
   const auto* object_material_indices = aggregate.object_material_indices;
 
   for (std::size_t i = 0; i < objects.size(); ++i) {
-    const Object obj = objects[i];
+    const GPUObject obj = objects[i];
     if (ray_object_intersection_test(ray, obj, aggregate, vertices, indices,
                                      record)) {
       hit = true;
@@ -277,9 +259,9 @@ __device__ void evaluate_material(Ray& ray, const HitRecord record,
 
 __global__ void path_tracing_kernel(
     unsigned int width, unsigned int height, glm::mat4 camera_matrix, float fov,
-    glm::vec3* image, std::size_t iteration, AggregateView aggregate,
-    Span<const Material> mat, Span<const DiffuseMateral> diffuse_mat,
-    Span<const MetalMaterial> metal_mat,
+    glm::vec3* color_buffer, glm::vec3* normal_buffer, std::size_t iteration,
+    AggregateView aggregate, Span<const Material> mat,
+    Span<const DiffuseMateral> diffuse_mat, Span<const MetalMaterial> metal_mat,
     Span<const DielectricMaterial> dielectric_mat, const Vertex* vertices,
     Span<const std::uint32_t> indices)
 {
@@ -293,6 +275,8 @@ __global__ void path_tracing_kernel(
 
   // Path tracing
   glm::vec3 color{1.0f, 1.0f, 1.0f};
+  glm::vec3 normal{0.f, 0.f, 0.f};
+
   for (int i = 0; i < 50; ++i) {
     HitRecord record;
     const bool hit =
@@ -301,29 +285,42 @@ __global__ void path_tracing_kernel(
       color *= get_background_color(ray);
       break;
     }
+
     evaluate_material(ray, record, rng, color, mat, diffuse_mat, metal_mat,
                       dielectric_mat);
+    if (i == 0) { normal = record.normal; }
   }
 
   color = gamma_correction(color);
 
   // Final gathering
   const auto sample_count = static_cast<float>(iteration + 1);
-  image[index] = (image[index] * (sample_count - 1) + color) / sample_count;
+  color_buffer[index] =
+      (color_buffer[index] * (sample_count - 1) + color) / sample_count;
+  normal_buffer[index] =
+      (normal_buffer[index] * (sample_count - 1) + normal) / sample_count;
 }
 
+enum class BufferNormalizationMethod { none, neg1_1_to_0_1 };
+
 __global__ void preview_kernel(unsigned int width, unsigned int height,
-                               glm::vec3* image, uchar4* pbo)
+                               BufferNormalizationMethod normalization_method,
+                               glm::vec3* buffer, uchar4* pbo)
 {
   const auto [x, y] = calculate_index_2d();
   if (x >= width || y >= height) return;
   const auto index = x + ((height - y) * width);
 
+  auto color = buffer[index];
+
+  switch (normalization_method) {
+  case BufferNormalizationMethod::neg1_1_to_0_1: color = color * 0.5f + 0.5f;
+  }
+
   constexpr auto color_float_to_255 = [](float v) {
     return static_cast<unsigned char>(glm::clamp(v, 0.f, 1.f) * 255.99f);
   };
 
-  const auto color = image[index];
   if (x <= width && y <= height) {
     pbo[index] =
         uchar4{color_float_to_255(color.x), color_float_to_255(color.y),
@@ -331,7 +328,7 @@ __global__ void preview_kernel(unsigned int width, unsigned int height,
   }
 }
 
-[[nodiscard]] static auto load_obj(const char* filename) -> Mesh
+[[nodiscard]] static auto load_obj(const char* filename) -> GPUMesh
 {
   Assimp::Importer importer;
 
@@ -354,7 +351,7 @@ __global__ void preview_kernel(unsigned int width, unsigned int height,
     for (unsigned j = 0; j != 3; j++)
       indices.push_back(mesh->mFaces[i].mIndices[j]);
 
-  Mesh mesh_gpu;
+  GPUMesh mesh_gpu;
   mesh_gpu.vertices = cuda::make_buffer<Vertex>(vertices.size());
   mesh_gpu.indices = cuda::make_buffer<std::uint32_t>(indices.size());
   mesh_gpu.indices_count = indices.size();
@@ -385,16 +382,31 @@ void PathTracer::path_trace(uchar4* dev_pbo, const Camera& camera,
   const dim3 full_blocks_per_grid(blocks_x, blocks_y);
 
   path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-      width, height, camera.camera_matrix(), camera.fov(), dev_image_.data(),
-      iteration_, AggregateView{aggregate_},
-      Span{dev_mat_.data(), std::size(mat)},
+      width, height, camera.camera_matrix(), camera.fov(),
+      dev_color_buffer_.data(), dev_normal_buffer_.data(), iteration_,
+      AggregateView{aggregate_}, Span{dev_mat_.data(), std::size(mat)},
       Span{dev_diffuse_mat_.data(), std::size(diffuse_mat)},
       Span{dev_metal_mat_.data(), std::size(metal_mat)},
       Span{dev_dielectric_mat_.data(), std::size(dielectric_mat)},
       cube_.vertices.data(), Span{cube_.indices.data(), cube_.indices_count});
   check_CUDA_error("Path Tracing kernel");
-  preview_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-      width, height, dev_image_.data(), dev_pbo);
+
+  switch (display_buffer_) {
+  case DisplayBuffer::path_tracing:
+    preview_kernel<<<full_blocks_per_grid, threads_per_block>>>(
+        width, height, BufferNormalizationMethod::none,
+        dev_color_buffer_.data(), dev_pbo);
+    break;
+  case DisplayBuffer::normal:
+    preview_kernel<<<full_blocks_per_grid, threads_per_block>>>(
+        width, height, BufferNormalizationMethod::neg1_1_to_0_1,
+        dev_normal_buffer_.data(), dev_pbo);
+    break;
+  case DisplayBuffer::position:
+    preview_kernel<<<full_blocks_per_grid, threads_per_block>>>(
+        width, height, BufferNormalizationMethod::none,
+        dev_color_buffer_.data(), dev_pbo);
+  }
   check_CUDA_error("Preview kernel");
 
   CUDA_CHECK(cudaDeviceSynchronize());
@@ -409,36 +421,20 @@ void PathTracer::restart()
 
 void PathTracer::resize_image(unsigned int width, unsigned int height)
 {
-  dev_image_ = cuda::make_buffer<glm::vec3>(width * height);
+  const auto image_size = width * height;
+  dev_color_buffer_ = cuda::make_buffer<glm::vec3>(image_size);
+  dev_normal_buffer_ = cuda::make_buffer<glm::vec3>(image_size);
   CUDA_CHECK(cudaDeviceSynchronize());
   restart();
 }
 
-template <typename T>
-[[nodiscard]] static auto create_buffer_from_cpu_data(Span<const T> span)
+void PathTracer::create_buffers(unsigned int width, unsigned int height,
+                                const SceneBuilder& scene)
 {
-  auto dev_buffer = cuda::make_buffer<T>(span.size());
-  CUDA_CHECK(cudaMemcpy(dev_buffer.data(), span.data(), span.size() * sizeof(T),
-                        cudaMemcpyHostToDevice));
-  return dev_buffer;
-}
-
-void PathTracer::create_buffers(unsigned int width, unsigned int height)
-{
-  aggregate_.objects = create_buffer_from_cpu_data(Span{objects});
-  aggregate_.object_count = std::size(objects);
-  aggregate_.object_material_indices =
-      create_buffer_from_cpu_data(Span{material_indices});
-
-  aggregate_.spheres = create_buffer_from_cpu_data(Span{spheres});
-  aggregate_.sphere_count = std::size(spheres);
-
-  aggregate_.triangles = create_buffer_from_cpu_data(Span{triangles});
-  aggregate_.triangle_count = std::size(triangles);
-
-  dev_mat_ = create_buffer_from_cpu_data(Span{mat});
-  dev_diffuse_mat_ = create_buffer_from_cpu_data(Span{diffuse_mat});
-  dev_metal_mat_ = create_buffer_from_cpu_data(Span{metal_mat});
-  dev_dielectric_mat_ = create_buffer_from_cpu_data(Span{dielectric_mat});
+  aggregate_ = scene.build();
+  dev_mat_ = cuda::create_buffer_from_cpu_data(Span{mat});
+  dev_diffuse_mat_ = cuda::create_buffer_from_cpu_data(Span{diffuse_mat});
+  dev_metal_mat_ = cuda::create_buffer_from_cpu_data(Span{metal_mat});
+  dev_dielectric_mat_ = cuda::create_buffer_from_cpu_data(Span{dielectric_mat});
   resize_image(width, height);
 }

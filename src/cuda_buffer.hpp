@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "cuda_check.hpp"
+#include "span.hpp"
 
 namespace cuda {
 
@@ -16,10 +17,7 @@ public:
   /* explicit(false) */ Buffer(T* ptr) : ptr_{ptr} {}
   /* explicit(false) */ Buffer(std::nullptr_t) {}
 
-  ~Buffer()
-  {
-    cudaFree(ptr_);
-  }
+  ~Buffer() { cudaFree(ptr_); }
 
   Buffer(const Buffer&) = delete;
   auto operator=(const Buffer&) & -> Buffer& = delete;
@@ -31,23 +29,26 @@ public:
     return *this;
   }
 
-  [[nodiscard]] auto data() -> T*
-  {
-    return ptr_;
-  }
+  [[nodiscard]] auto data() -> T* { return ptr_; }
 
-  [[nodiscard]] auto data() const -> const T*
-  {
-    return ptr_;
-  }
+  [[nodiscard]] auto data() const -> const T* { return ptr_; }
 };
 
 template <typename T>
 [[nodiscard]] auto make_buffer(std::size_t size) -> Buffer<T>
 {
   T* ptr = nullptr;
-  CUDA_CHECK(cudaMalloc(&ptr, size * sizeof(T)));
+  CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&ptr), size * sizeof(T)));
   return Buffer{ptr};
+}
+
+template <typename T>
+[[nodiscard]] auto create_buffer_from_cpu_data(Span<const T> span)
+{
+  auto dev_buffer = cuda::make_buffer<T>(span.size());
+  CUDA_CHECK(cudaMemcpy(dev_buffer.data(), span.data(), span.size() * sizeof(T),
+                        cudaMemcpyHostToDevice));
+  return dev_buffer;
 }
 
 } // namespace cuda

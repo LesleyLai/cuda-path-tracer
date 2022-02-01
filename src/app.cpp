@@ -36,7 +36,7 @@ App::App()
   glfwSetWindowUserPointer(window_.get(), this);
   glfwSetFramebufferSizeCallback(
       window_.get(), [](GLFWwindow* window, int width, int height) {
-        App* app = static_cast<App*>(glfwGetWindowUserPointer(window));
+        auto* app = static_cast<App*>(glfwGetWindowUserPointer(window));
 
         app->preview_->recreate_image(width, height);
         app->path_tracer_.resize_image(static_cast<unsigned int>(width),
@@ -46,7 +46,7 @@ App::App()
       });
   glfwSetKeyCallback(window_.get(), [](GLFWwindow* window, int key,
                                        int /*scancode*/, int action, int mods) {
-    App* app = static_cast<App*>(glfwGetWindowUserPointer(window));
+    auto* app = static_cast<App*>(glfwGetWindowUserPointer(window));
     switch (action) {
     case GLFW_PRESS:
       switch (key) {
@@ -55,7 +55,7 @@ App::App()
       case GLFW_KEY_GRAVE_ACCENT: {
         if (mods == GLFW_MOD_SHIFT)
           app->hide_control_panel_ = !app->hide_control_panel_; // ~
-      }; break;
+      } break;
       default: break;
       }
       break;
@@ -148,8 +148,22 @@ App::App()
 
   const auto [width, height] = window_.resolution();
   preview_ = std::make_unique<PreviewRenderer>(width, height);
+
+  SceneBuilder scene;
+  scene.add_object(Sphere{{0.0f, -100.5f, -1.0f}, 100.f}, 0);
+  scene.add_object(Sphere{{0.0f, 0.0f, -1.0f}, 0.5f}, 1);
+  scene.add_object(Sphere{{-1.0f, 0.0f, -1.0f}, 0.5f}, 2);
+  scene.add_object(Sphere{{1.0f, 0.0f, -1.0f}, 0.5f}, 3);
+  scene.add_object(
+      Triangle{
+          {0.0f, 0.0f, 2.0f},
+          {0.0f, 10.0f, 2.0f},
+          {10.0f, 0.0f, 2.0f},
+      },
+      1);
+  scene.add_object(Mesh{}, 1);
   path_tracer_.create_buffers(static_cast<unsigned int>(width),
-                              static_cast<unsigned int>(height));
+                              static_cast<unsigned int>(height), scene);
 
   init_imgui(window_.get());
 }

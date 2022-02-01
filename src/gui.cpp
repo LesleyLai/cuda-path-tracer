@@ -66,6 +66,15 @@ void draw_path_tracer_gui(PathTracer& path_tracer)
   path_tracer.max_iterations = std::max(1, path_tracer.max_iterations);
 }
 
+void draw_display_gui(PathTracer& path_tracer)
+{
+  constexpr const char* items[] = {"Path Tracing", "Normal", "Position"};
+  static int item_current = 0;
+  ImGui::Combo("buffer", &item_current, items, IM_ARRAYSIZE(items));
+
+  path_tracer.set_display_type(static_cast<DisplayBuffer>(item_current));
+}
+
 /// @return true if need to restart path tracer
 [[nodiscard]] auto draw_camera_gui(Camera& camera) -> bool
 {
@@ -130,6 +139,14 @@ void App::draw_gui()
     }
     if (ImGui::BeginTabItem("Camera")) {
       if (draw_camera_gui(camera_)) { path_tracer_.restart(); }
+      ImGui::EndTabItem();
+    }
+
+    if (ImGui::BeginTabItem("Display")) {
+      {
+        draw_display_gui(path_tracer_);
+      }
+
       ImGui::EndTabItem();
     }
     ImGui::EndTabBar();

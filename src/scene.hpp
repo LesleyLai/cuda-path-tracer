@@ -1,21 +1,22 @@
-#ifndef CUDA_PATH_TRACER_GPU_SCENE_HPP
-#define CUDA_PATH_TRACER_GPU_SCENE_HPP
+#ifndef CUDA_PATH_TRACER_SCENE_HPP
+#define CUDA_PATH_TRACER_SCENE_HPP
 
 #include "cuda_buffer.hpp"
+#include "mesh.hpp"
 #include "span.hpp"
 #include "sphere.hpp"
 #include "triangle.hpp"
 
 enum class ObjectType : std::uint32_t { sphere, triangle, mesh };
-struct Object {
+struct GPUObject {
   ObjectType type{};
   std::uint32_t index{};
 };
 
 // An aggregate contains object data on the GPU
-struct GPUAggregate {
+struct Aggregate {
   std::size_t object_count = 0;
-  cuda::Buffer<Object> objects{};
+  cuda::Buffer<GPUObject> objects{};
   cuda::Buffer<std::uint32_t> object_material_indices{};
 
   std::size_t sphere_count = 0;
@@ -26,13 +27,13 @@ struct GPUAggregate {
 };
 
 struct AggregateView {
-  Span<const Object> objects;
+  Span<const GPUObject> objects;
   const std::uint32_t* object_material_indices = nullptr;
   Span<const Sphere> spheres;
   Span<const Triangle> triangles;
 
   AggregateView() = default;
-  explicit AggregateView(const GPUAggregate& aggregate)
+  explicit AggregateView(const Aggregate& aggregate)
       : objects{aggregate.objects.data(), aggregate.object_count},
         object_material_indices{aggregate.object_material_indices.data()},
         spheres{aggregate.spheres.data(), aggregate.sphere_count},
@@ -41,4 +42,4 @@ struct AggregateView {
   }
 };
 
-#endif // CUDA_PATH_TRACER_GPU_SCENE_HPP
+#endif // CUDA_PATH_TRACER_SCENE_HPP

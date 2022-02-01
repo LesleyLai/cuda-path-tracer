@@ -5,41 +5,37 @@
 #include <glm/glm.hpp>
 
 #include "cuda_buffer.hpp"
-#include "gpu_scene.hpp"
 #include "material.hpp"
 #include "ray.hpp"
+#include "scene.hpp"
+#include "scene_builder.hpp"
 
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 
 class Camera;
 
-struct Vertex {
-  glm::vec3 position;
-};
-
-struct Mesh {
-  cuda::Buffer<Vertex> vertices;
-  cuda::Buffer<std::uint32_t> indices;
-  std::uint32_t indices_count;
-};
+enum DisplayBuffer { path_tracing, normal, position };
 
 class PathTracer {
 public:
   int max_iterations = 10000;
 
 private:
-  GPUAggregate aggregate_;
+  Aggregate aggregate_;
   cuda::Buffer<Material> dev_mat_;
   cuda::Buffer<DiffuseMateral> dev_diffuse_mat_;
   cuda::Buffer<MetalMaterial> dev_metal_mat_;
   cuda::Buffer<DielectricMaterial> dev_dielectric_mat_;
 
-  cuda::Buffer<glm::vec3> dev_image_;
+  cuda::Buffer<glm::vec3> dev_color_buffer_;
+  cuda::Buffer<glm::vec3> dev_normal_buffer_;
 
-  Mesh cube_;
+  GPUMesh cube_;
 
   int iteration_ = 0;
+
+  DisplayBuffer display_buffer_ = DisplayBuffer::path_tracing;
 
 public:
   PathTracer();
@@ -50,7 +46,13 @@ public:
 
   void resize_image(unsigned int width, unsigned int height);
 
-  void create_buffers(unsigned int width, unsigned int height);
+  void create_buffers(unsigned int width, unsigned int height,
+                      const SceneBuilder& scene);
   void path_trace(uchar4* dev_pbo, const Camera& camera, unsigned int width,
                   unsigned int height);
+
+  void set_display_type(DisplayBuffer display_type)
+  {
+    display_buffer_ = display_type;
+  }
 };

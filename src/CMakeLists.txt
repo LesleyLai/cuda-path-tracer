@@ -36,7 +36,7 @@ add_executable(app
         hit_record.hpp
         intersections.cuh
         triangle.hpp
-        gpu_scene.hpp material.hpp)
+        scene.hpp material.hpp scene_builder.hpp mesh.hpp scene_builder.cpp)
 target_link_libraries(app PRIVATE
         common
         glfw::glfw
