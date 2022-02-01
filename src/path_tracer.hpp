@@ -30,6 +30,7 @@ private:
 
   cuda::Buffer<glm::vec3> dev_color_buffer_;
   cuda::Buffer<glm::vec3> dev_normal_buffer_;
+  cuda::Buffer<glm::vec3> dev_position_buffer_;
 
   GPUMesh cube_;
 

@@ -259,9 +259,10 @@ __device__ void evaluate_material(Ray& ray, const HitRecord record,
 
 __global__ void path_tracing_kernel(
     unsigned int width, unsigned int height, glm::mat4 camera_matrix, float fov,
-    glm::vec3* color_buffer, glm::vec3* normal_buffer, std::size_t iteration,
-    AggregateView aggregate, Span<const Material> mat,
-    Span<const DiffuseMateral> diffuse_mat, Span<const MetalMaterial> metal_mat,
+    glm::vec3* color_buffer, glm::vec3* normal_buffer,
+    glm::vec3* position_buffer, std::size_t iteration, AggregateView aggregate,
+    Span<const Material> mat, Span<const DiffuseMateral> diffuse_mat,
+    Span<const MetalMaterial> metal_mat,
     Span<const DielectricMaterial> dielectric_mat, const Vertex* vertices,
     Span<const std::uint32_t> indices)
 {
@@ -276,6 +277,7 @@ __global__ void path_tracing_kernel(
   // Path tracing
   glm::vec3 color{1.0f, 1.0f, 1.0f};
   glm::vec3 normal{0.f, 0.f, 0.f};
+  glm::vec3 position{INFINITY, INFINITY, INFINITY};
 
   for (int i = 0; i < 50; ++i) {
     HitRecord record;
@@ -288,7 +290,10 @@ __global__ void path_tracing_kernel(
 
     evaluate_material(ray, record, rng, color, mat, diffuse_mat, metal_mat,
                       dielectric_mat);
-    if (i == 0) { normal = record.normal; }
+    if (i == 0) {
+      normal = record.normal;
+      position = record.point;
+    }
   }
 
   color = gamma_correction(color);
@@ -299,6 +304,7 @@ __global__ void path_tracing_kernel(
       (color_buffer[index] * (sample_count - 1) + color) / sample_count;
   normal_buffer[index] =
       (normal_buffer[index] * (sample_count - 1) + normal) / sample_count;
+  position_buffer[index] = position;
 }
 
 enum class BufferNormalizationMethod { none, neg1_1_to_0_1 };
@@ -315,6 +321,7 @@ __global__ void preview_kernel(unsigned int width, unsigned int height,
 
   switch (normalization_method) {
   case BufferNormalizationMethod::neg1_1_to_0_1: color = color * 0.5f + 0.5f;
+  default: break;
   }
 
   constexpr auto color_float_to_255 = [](float v) {
@@ -383,8 +390,9 @@ void PathTracer::path_trace(uchar4* dev_pbo, const Camera& camera,
 
   path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
       width, height, camera.camera_matrix(), camera.fov(),
-      dev_color_buffer_.data(), dev_normal_buffer_.data(), iteration_,
-      AggregateView{aggregate_}, Span{dev_mat_.data(), std::size(mat)},
+      dev_color_buffer_.data(), dev_normal_buffer_.data(),
+      dev_position_buffer_.data(), iteration_, AggregateView{aggregate_},
+      Span{dev_mat_.data(), std::size(mat)},
       Span{dev_diffuse_mat_.data(), std::size(diffuse_mat)},
       Span{dev_metal_mat_.data(), std::size(metal_mat)},
       Span{dev_dielectric_mat_.data(), std::size(dielectric_mat)},
@@ -405,7 +413,8 @@ void PathTracer::path_trace(uchar4* dev_pbo, const Camera& camera,
   case DisplayBuffer::position:
     preview_kernel<<<full_blocks_per_grid, threads_per_block>>>(
         width, height, BufferNormalizationMethod::none,
-        dev_color_buffer_.data(), dev_pbo);
+        dev_position_buffer_.data(), dev_pbo);
+    break;
   }
   check_CUDA_error("Preview kernel");
 
@@ -424,6 +433,7 @@ void PathTracer::resize_image(unsigned int width, unsigned int height)
   const auto image_size = width * height;
   dev_color_buffer_ = cuda::make_buffer<glm::vec3>(image_size);
   dev_normal_buffer_ = cuda::make_buffer<glm::vec3>(image_size);
+  dev_position_buffer_ = cuda::make_buffer<glm::vec3>(image_size);
   CUDA_CHECK(cudaDeviceSynchronize());
   restart();
 }
