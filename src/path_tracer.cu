@@ -296,8 +296,6 @@ __global__ void path_tracing_kernel(
     }
   }
 
-  color = gamma_correction(color);
-
   // Final gathering
   const auto sample_count = static_cast<float>(iteration + 1);
   color_buffer[index] =
@@ -327,6 +325,8 @@ __global__ void preview_kernel(unsigned int width, unsigned int height,
   constexpr auto color_float_to_255 = [](float v) {
     return static_cast<unsigned char>(glm::clamp(v, 0.f, 1.f) * 255.99f);
   };
+
+  color = gamma_correction(color);
 
   if (x <= width && y <= height) {
     pbo[index] =
