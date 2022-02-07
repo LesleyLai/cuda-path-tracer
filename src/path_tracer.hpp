@@ -15,11 +15,21 @@
 
 class Camera;
 
-enum DisplayBuffer { path_tracing, normal, position };
+enum DisplayBuffer { path_tracing, color, normal, position };
+
+struct ATrousParameters {
+  int filter_size = 10;
+  float color_weight = 0.45f;
+  float normal_weight = 0.30f;
+  float position_weight = 0.25f;
+};
 
 class PathTracer {
 public:
   int max_iterations = 10000;
+
+  bool enable_denoising = true;
+  ATrousParameters atrous_paramteters{};
 
 private:
   Aggregate aggregate_;
@@ -31,6 +41,9 @@ private:
   cuda::Buffer<glm::vec3> dev_color_buffer_;
   cuda::Buffer<glm::vec3> dev_normal_buffer_;
   cuda::Buffer<glm::vec3> dev_position_buffer_;
+
+  cuda::Buffer<glm::vec3> dev_denoised_buffer_;
+  cuda::Buffer<glm::vec3> dev_denoised_buffer2_;
 
   GPUMesh cube_;
 

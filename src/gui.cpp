@@ -3,8 +3,10 @@
 #include "path_tracer.hpp"
 
 #include <imgui.h>
+
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <imgui_internal.h>
 
 void init_imgui(GLFWwindow* window)
 {
@@ -55,6 +57,43 @@ void ToolTip(const char* desc, const char* shortcut = nullptr)
   }
 }
 
+void PushDisabled()
+{
+  ImGuiContext& g = *GImGui;
+  if ((g.CurrentItemFlags & ImGuiItemFlags_Disabled) == 0)
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, g.Style.Alpha * 0.6f);
+  ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+}
+
+void PopDisabled()
+{
+  ImGuiContext& g = *GImGui;
+  ImGui::PopItemFlag();
+  if ((g.CurrentItemFlags & ImGuiItemFlags_Disabled) == 0) ImGui::PopStyleVar();
+}
+
+void draw_denoiser_options_gui(PathTracer& path_tracer)
+{
+  ImGui::Checkbox("Enable", &path_tracer.enable_denoising);
+  if (!path_tracer.enable_denoising) { PushDisabled(); }
+
+  constexpr const char* methods[] = {"Edge-Avoiding À-Trous Wavelet"};
+  static int method_current = 0;
+
+  ImGui::Combo("Method", &method_current, methods, IM_ARRAYSIZE(methods));
+  ImGui::SliderInt("Filter Size", &path_tracer.atrous_paramteters.filter_size,
+                   1, 100);
+  ImGui::SliderFloat("Color Weight",
+                     &path_tracer.atrous_paramteters.color_weight, 0.0f, 1.0f);
+  ImGui::SliderFloat("Normal Weight",
+                     &path_tracer.atrous_paramteters.normal_weight, 0.0f, 1.0f);
+  ImGui::SliderFloat("Position Weight",
+                     &path_tracer.atrous_paramteters.position_weight, 0.0f,
+                     1.0f);
+
+  if (!path_tracer.enable_denoising) { PopDisabled(); }
+}
+
 void draw_path_tracer_gui(PathTracer& path_tracer)
 {
   ImGui::Text("%d iterations", path_tracer.iteration());
@@ -64,11 +103,16 @@ void draw_path_tracer_gui(PathTracer& path_tracer)
 
   ImGui::InputInt("Max iterations", &path_tracer.max_iterations);
   path_tracer.max_iterations = std::max(1, path_tracer.max_iterations);
+
+  if (ImGui::CollapsingHeader("Denoiser")) {
+    draw_denoiser_options_gui(path_tracer);
+  }
 }
 
 void draw_display_gui(PathTracer& path_tracer)
 {
-  constexpr const char* items[] = {"Path Tracing", "Normal", "Position"};
+  constexpr const char* items[] = {"Path Tracing", "Color", "Normal",
+                                   "Position"};
   static int item_current = 0;
   ImGui::Combo("buffer", &item_current, items, IM_ARRAYSIZE(items));
 
@@ -94,18 +138,18 @@ void draw_display_gui(PathTracer& path_tracer)
   pathtracer_restart_required |= ImGui::InputFloat3("Position", &position[0]);
   camera.set_position(position);
 
-  float rotation[3] = {glm::degrees(camera.pitch()), glm::degrees(camera.yaw()),
-                       glm::degrees(camera.roll())};
-
-  if (ImGui::InputFloat3("Rotation", rotation)) {
+  if (float rotation[3] = {glm::degrees(camera.pitch()),
+                           glm::degrees(camera.yaw()),
+                           glm::degrees(camera.roll())};
+      ImGui::InputFloat3("Rotation", rotation)) {
     camera.set_pitch(glm::radians(rotation[0]));
     camera.set_yaw(glm::radians(rotation[1]));
     camera.set_roll(glm::radians(rotation[2]));
     pathtracer_restart_required = true;
   }
 
-  float fov_degree = glm::degrees(camera.fov());
-  if (ImGui::SliderFloat("Fov", &fov_degree, 10, 170)) {
+  if (float fov_degree = glm::degrees(camera.fov());
+      ImGui::SliderFloat("Fov", &fov_degree, 10, 170)) {
     camera.set_fov(glm::radians(fov_degree));
     pathtracer_restart_required = true;
   }
