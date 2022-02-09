@@ -8,7 +8,7 @@
 
 #include <tl/function_ref.hpp>
 
-#include "cuda_check.hpp"
+#include "cuda_utils/cuda_check.hpp"
 #include "shader.hpp"
 
 class PreviewRenderer {

@@ -4,7 +4,7 @@
 #include <glm/glm.hpp>
 #include <vector>
 
-#include "cuda_buffer.hpp"
+#include "cuda_utils/cuda_buffer.hpp"
 
 struct Vertex {
   glm::vec3 position{};

@@ -177,9 +177,11 @@ void App::run_cuda()
 {
   preview_->map_pbo([&](uchar4* dev_pbo) {
     const auto resolution = window_.resolution();
-    path_tracer_.path_trace(dev_pbo, camera_,
-                            static_cast<unsigned int>(resolution.width),
-                            static_cast<unsigned int>(resolution.height));
+
+    const auto u_width = static_cast<unsigned int>(resolution.width);
+    const auto u_height = static_cast<unsigned int>(resolution.height);
+    path_tracer_.path_trace(camera_, u_width, u_height);
+    path_tracer_.send_to_preview(dev_pbo, u_width, u_height);
   });
 }
 

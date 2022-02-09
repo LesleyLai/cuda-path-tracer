@@ -1,7 +1,8 @@
 #include "path_tracer.hpp"
 
 #include "camera.hpp"
-#include "cuda_buffer.hpp"
+#include "cuda_utils/2d_indices.cuh"
+#include "cuda_utils/cuda_buffer.hpp"
 #include "distributions.cuh"
 #include "span.hpp"
 
@@ -35,27 +36,6 @@ static const DiffuseMateral diffuse_mat[] = {{{0.8, 0.8, 0.0}},
                                              {{0.1, 0.2, 0.5}}};
 static const MetalMaterial metal_mat[] = {{{0.8, 0.6, 0.2}, 1.0}};
 static const DielectricMaterial dielectric_mat[] = {{1.5}};
-
-void check_CUDA_error(std::string_view msg)
-{
-  cudaError_t err = cudaGetLastError();
-  if (cudaSuccess != err) {
-    fmt::print(stderr, "Cuda error: {}: {}.\n", msg, cudaGetErrorString(err));
-    exit(EXIT_FAILURE);
-  }
-}
-
-struct Index2D {
-  unsigned int x = 0;
-  unsigned int y = 0;
-};
-
-[[nodiscard]] __device__ constexpr auto calculate_index_2d() -> Index2D
-{
-  const auto x = (blockIdx.x * blockDim.x) + threadIdx.x;
-  const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
-  return Index2D{x, y};
-}
 
 [[nodiscard]] __device__ auto raygen(glm::mat4 camera_matrix, float fov,
                                      unsigned int width, unsigned int height,
@@ -257,8 +237,6 @@ __device__ void evaluate_material(Ray& ray, const HitRecord record,
   return color;
 }
 
-#define FLATTERN_INDEX(x, y) ((x) + ((height - (y)) * width))
-
 __global__ void path_tracing_kernel(
     unsigned int width, unsigned int height, glm::mat4 camera_matrix, float fov,
     glm::vec3* color_buffer, glm::vec3* normal_buffer,
@@ -268,7 +246,7 @@ __global__ void path_tracing_kernel(
     Span<const DielectricMaterial> dielectric_mat, const Vertex* vertices,
     Span<const std::uint32_t> indices)
 {
-  const auto [x, y] = calculate_index_2d();
+  const auto [x, y] = cuda::calculate_index_2d();
   if (x >= width || y >= height) return;
   const auto index = FLATTERN_INDEX(x, y);
 
@@ -316,70 +294,11 @@ __global__ void path_tracing_kernel(
 
 enum class BufferNormalizationMethod { none, neg1_1_to_0_1 };
 
-__global__ void denoising_kernel(unsigned int width, unsigned int height,
-                                 ATrousParameters parameters,
-                                 glm::vec3* color_buffer,
-                                 glm::vec3* normal_buffer,
-                                 glm::vec3* position_buffer,
-                                 glm::vec3* out_buffer, int step_width)
-{
-  const auto [x, y] = calculate_index_2d();
-  if (x >= width || y >= height) return;
-  const auto index = FLATTERN_INDEX(x, y);
-
-  const float c_phi = parameters.color_weight;
-  const float n_phi = parameters.normal_weight;
-  const float p_phi = parameters.position_weight;
-
-  // 5x5 symmetric kernel
-  constexpr float kernel[] = {3.f / 8.f, 1.f / 4.f, 1.f / 16.f};
-
-  const glm::vec3 cval = color_buffer[index];
-  const glm::vec3 nval = normal_buffer[index];
-  const glm::vec3 pval = position_buffer[index];
-
-  glm::vec3 sum{0.0};
-  float cum_w = 0.0;
-  for (int dy = -2; dy <= 2; ++dy) {
-    for (int dx = -2; dx <= 2; ++dx) {
-      const int u = std::clamp(static_cast<int>(x) + dx * step_width, 0,
-                               static_cast<int>(width));
-      const int v = std::clamp(static_cast<int>(y) + dy * step_width, 0,
-                               static_cast<int>(height));
-      const auto temp_index = FLATTERN_INDEX(u, v);
-
-      const glm::vec3 ctemp = color_buffer[temp_index];
-      glm::vec3 t = cval - ctemp;
-      float dist2 = glm::dot(t, t);
-      const float c_w = std::min(std::exp(-dist2 / c_phi), 1.0f);
-
-      const glm::vec3 ntemp = normal_buffer[temp_index];
-      t = nval - ntemp;
-      dist2 = std::max(
-          glm::dot(t, t) / static_cast<float>(step_width * step_width), 0.0f);
-      const float n_w = std::min(std::exp(-dist2 / n_phi), 1.0f);
-
-      const glm::vec3 ptmp = position_buffer[temp_index];
-      t = pval - ptmp;
-      dist2 = glm::dot(t, t);
-      const float p_w = std::min(std::exp(-dist2 / p_phi), 1.0f);
-
-      const float weight = c_w * n_w * p_w;
-
-      const int kernel_index = std::min(std::abs(dx), std::abs(dy));
-      sum += ctemp * weight * kernel[kernel_index];
-      cum_w += weight * kernel[kernel_index];
-    }
-  }
-
-  out_buffer[index] = sum / cum_w;
-}
-
 __global__ void preview_kernel(unsigned int width, unsigned int height,
                                BufferNormalizationMethod normalization_method,
                                const glm::vec3* buffer, uchar4* pbo)
 {
-  const auto [x, y] = calculate_index_2d();
+  const auto [x, y] = cuda::calculate_index_2d();
   if (x >= width || y >= height) return;
   const auto index = FLATTERN_INDEX(x, y);
 
@@ -444,19 +363,17 @@ PathTracer::PathTracer()
   cube_ = load_obj("models/cube.obj");
 }
 
-void PathTracer::path_trace(uchar4* dev_pbo, const Camera& camera,
-                            unsigned int width, unsigned int height)
+void PathTracer::path_trace(const Camera& camera, unsigned int width,
+                            unsigned int height)
 {
-
   constexpr unsigned int block_size = 16;
-  const dim3 threads_per_block(block_size, block_size);
 
+  const dim3 threads_per_block(block_size, block_size);
   const auto blocks_x = (width + block_size - 1) / block_size;
   const auto blocks_y = (height + block_size - 1) / block_size;
   const dim3 full_blocks_per_grid(blocks_x, blocks_y);
 
   if (iteration_ < max_iterations) {
-
     path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
         width, height, camera.camera_matrix(), camera.fov(),
         dev_color_buffer_.data(), dev_normal_buffer_.data(),
@@ -466,38 +383,35 @@ void PathTracer::path_trace(uchar4* dev_pbo, const Camera& camera,
         Span{dev_metal_mat_.data(), std::size(metal_mat)},
         Span{dev_dielectric_mat_.data(), std::size(dielectric_mat)},
         cube_.vertices.data(), Span{cube_.indices.data(), cube_.indices_count});
-    check_CUDA_error("Path Tracing kernel");
+    cuda::check_CUDA_error("Path Tracing kernel");
 
     ++iteration_;
   }
 
-  auto* denoising_input_color_buffer = dev_color_buffer_.data();
-  auto* denoising_output_color_buffer = dev_denoised_buffer2_.data();
-
+  path_trace_result_buffer_ = dev_color_buffer_.data();
   if (enable_denoising) {
-    auto* denoising_temp_color_buffer = dev_denoised_buffer_.data();
-
-    for (int step_width = 1; step_width <= atrous_paramteters.filter_size;
-         step_width *= 2) {
-      denoising_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-          width, height, atrous_paramteters, denoising_input_color_buffer,
-          dev_normal_buffer_.data(), dev_position_buffer_.data(),
-          denoising_temp_color_buffer, step_width);
-      std::tie(denoising_input_color_buffer, denoising_temp_color_buffer,
-               denoising_output_color_buffer) =
-          std::tie(denoising_temp_color_buffer, denoising_output_color_buffer,
-                   denoising_temp_color_buffer);
-    }
-    check_CUDA_error("Denoising kernel");
+    path_trace_result_buffer_ = atrous_denoiser.denoise(
+        width, height, dev_color_buffer_.data(), dev_normal_buffer_.data(),
+        dev_position_buffer_.data(), dev_denoised_buffer_.data(),
+        dev_denoised_buffer2_.data());
   }
+}
+
+void PathTracer::send_to_preview(uchar4* dev_pbo, unsigned int width,
+                                 unsigned int height) const
+{
+  constexpr unsigned int block_size = 16;
+
+  const dim3 threads_per_block(block_size, block_size);
+  const auto blocks_x = (width + block_size - 1) / block_size;
+  const auto blocks_y = (height + block_size - 1) / block_size;
+  const dim3 full_blocks_per_grid(blocks_x, blocks_y);
 
   switch (display_buffer_) {
   case DisplayBuffer::path_tracing: {
-    const glm::vec3* buffer = enable_denoising ? denoising_output_color_buffer
-                                               : dev_color_buffer_.data();
-
     preview_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-        width, height, BufferNormalizationMethod::none, buffer, dev_pbo);
+        width, height, BufferNormalizationMethod::none,
+        path_trace_result_buffer_, dev_pbo);
   } break;
   case DisplayBuffer::color:
     preview_kernel<<<full_blocks_per_grid, threads_per_block>>>(
@@ -515,7 +429,7 @@ void PathTracer::path_trace(uchar4* dev_pbo, const Camera& camera,
         dev_position_buffer_.data(), dev_pbo);
     break;
   }
-  check_CUDA_error("Preview kernel");
+  cuda::check_CUDA_error("Preview kernel");
   CUDA_CHECK(cudaDeviceSynchronize());
 }
 

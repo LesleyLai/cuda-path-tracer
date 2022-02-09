@@ -24,8 +24,8 @@ add_executable(app
         window.hpp
         app.hpp
         app.cpp
-        cuda_check.hpp
-        cuda_buffer.hpp
+        cuda_utils/cuda_check.hpp
+        cuda_utils/cuda_buffer.hpp
         distributions.cuh
         preview_renderer.cpp
         preview_renderer.hpp
@@ -36,7 +36,9 @@ add_executable(app
         hit_record.hpp
         intersections.cuh
         triangle.hpp
-        scene.hpp material.hpp scene_builder.hpp mesh.hpp scene_builder.cpp)
+        scene.hpp material.hpp scene_builder.hpp mesh.hpp scene_builder.cpp
+        denoising/edge_avoiding_a_trous_denoiser.cu
+        denoising/edge_avoiding_a_trous_denoiser.hpp cuda_utils/2d_indices.cuh)
 target_link_libraries(app PRIVATE
         common
         glfw::glfw

@@ -80,16 +80,16 @@ void draw_denoiser_options_gui(PathTracer& path_tracer)
   constexpr const char* methods[] = {"Edge-Avoiding À-Trous Wavelet"};
   static int method_current = 0;
 
+  auto& atrous_paramteters = path_tracer.atrous_denoiser.parameters;
+
   ImGui::Combo("Method", &method_current, methods, IM_ARRAYSIZE(methods));
-  ImGui::SliderInt("Filter Size", &path_tracer.atrous_paramteters.filter_size,
-                   1, 100);
-  ImGui::SliderFloat("Color Weight",
-                     &path_tracer.atrous_paramteters.color_weight, 0.0f, 1.0f);
-  ImGui::SliderFloat("Normal Weight",
-                     &path_tracer.atrous_paramteters.normal_weight, 0.0f, 1.0f);
-  ImGui::SliderFloat("Position Weight",
-                     &path_tracer.atrous_paramteters.position_weight, 0.0f,
+  ImGui::SliderInt("Filter Size", &atrous_paramteters.filter_size, 1, 100);
+  ImGui::SliderFloat("Color Weight", &atrous_paramteters.color_weight, 0.0f,
                      1.0f);
+  ImGui::SliderFloat("Normal Weight", &atrous_paramteters.normal_weight, 0.0f,
+                     1.0f);
+  ImGui::SliderFloat("Position Weight", &atrous_paramteters.position_weight,
+                     0.0f, 1.0f);
 
   if (!path_tracer.enable_denoising) { PopDisabled(); }
 }

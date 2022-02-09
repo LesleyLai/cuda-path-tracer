@@ -1,7 +1,7 @@
 #ifndef CUDA_PATH_TRACER_SCENE_HPP
 #define CUDA_PATH_TRACER_SCENE_HPP
 
-#include "cuda_buffer.hpp"
+#include "cuda_utils/cuda_buffer.hpp"
 #include "mesh.hpp"
 #include "span.hpp"
 #include "sphere.hpp"
