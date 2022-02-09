@@ -472,23 +472,24 @@ void PathTracer::path_trace(uchar4* dev_pbo, const Camera& camera,
   }
 
   auto* denoising_input_color_buffer = dev_color_buffer_.data();
-  auto* denoising_output_color_buffer = dev_denoised_buffer_.data();
+  auto* denoising_output_color_buffer = dev_denoised_buffer2_.data();
 
-  denoising_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-      width, height, atrous_paramteters, denoising_input_color_buffer,
-      dev_normal_buffer_.data(), dev_position_buffer_.data(),
-      denoising_output_color_buffer, 1);
+  if (enable_denoising) {
+    auto* denoising_temp_color_buffer = dev_denoised_buffer_.data();
 
-  denoising_input_color_buffer = dev_denoised_buffer2_.data();
-  for (int step_width = 2; step_width < atrous_paramteters.filter_size;
-       step_width *= 2) {
-    std::swap(denoising_input_color_buffer, denoising_output_color_buffer);
-    denoising_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-        width, height, atrous_paramteters, denoising_input_color_buffer,
-        dev_normal_buffer_.data(), dev_position_buffer_.data(),
-        denoising_output_color_buffer, step_width);
+    for (int step_width = 1; step_width <= atrous_paramteters.filter_size;
+         step_width *= 2) {
+      denoising_kernel<<<full_blocks_per_grid, threads_per_block>>>(
+          width, height, atrous_paramteters, denoising_input_color_buffer,
+          dev_normal_buffer_.data(), dev_position_buffer_.data(),
+          denoising_temp_color_buffer, step_width);
+      std::tie(denoising_input_color_buffer, denoising_temp_color_buffer,
+               denoising_output_color_buffer) =
+          std::tie(denoising_temp_color_buffer, denoising_output_color_buffer,
+                   denoising_temp_color_buffer);
+    }
+    check_CUDA_error("Denoising kernel");
   }
-  check_CUDA_error("Denoising kernel");
 
   switch (display_buffer_) {
   case DisplayBuffer::path_tracing: {
