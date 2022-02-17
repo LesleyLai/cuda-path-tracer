@@ -330,6 +330,7 @@ __global__ void preview_kernel(unsigned int width, unsigned int height,
   if (!scene || !scene->HasMeshes()) {
     throw std::runtime_error(fmt::format("Unable to load {}", filename));
   }
+
   const aiMesh* mesh = scene->mMeshes[0];
 
   thrust::host_vector<Vertex> vertices;

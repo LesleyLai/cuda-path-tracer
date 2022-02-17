@@ -4,8 +4,8 @@
 #include <cstdlib>
 #include <utility>
 
+#include "../span.hpp"
 #include "cuda_check.hpp"
-#include "span.hpp"
 
 namespace cuda {
 

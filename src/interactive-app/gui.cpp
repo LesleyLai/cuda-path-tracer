@@ -1,6 +1,5 @@
 #include "gui.hpp"
 #include "app.hpp"
-#include "path_tracer.hpp"
 
 #include <imgui.h>
 
@@ -59,7 +58,7 @@ void ToolTip(const char* desc, const char* shortcut = nullptr)
 
 void PushDisabled()
 {
-  ImGuiContext& g = *GImGui;
+  const ImGuiContext& g = *GImGui;
   if ((g.CurrentItemFlags & ImGuiItemFlags_Disabled) == 0)
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, g.Style.Alpha * 0.6f);
   ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
@@ -67,7 +66,7 @@ void PushDisabled()
 
 void PopDisabled()
 {
-  ImGuiContext& g = *GImGui;
+  const ImGuiContext& g = *GImGui;
   ImGui::PopItemFlag();
   if ((g.CurrentItemFlags & ImGuiItemFlags_Disabled) == 0) ImGui::PopStyleVar();
 }

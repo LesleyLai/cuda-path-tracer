@@ -1,5 +1,4 @@
 #include "app.hpp"
-#include "path_tracer.hpp"
 
 #include "preview_renderer.hpp"
 

@@ -2,6 +2,7 @@
 #define CUDA_PATH_TRACER_SPAN_HPP
 
 #include <cassert>
+#include <iterator>
 
 #ifdef __NVCC__
 

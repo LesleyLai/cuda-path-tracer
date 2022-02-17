@@ -5,13 +5,14 @@
 #include <tuple>
 
 #include "../cuda_utils/2d_indices.cuh"
+#include "../cuda_utils/cuda_check.hpp"
 
-__global__ void denoising_kernel(unsigned int width, unsigned int height,
-                                 ATrousParameters parameters,
-                                 const glm::vec3* color_buffer,
-                                 const glm::vec3* normal_buffer,
-                                 const glm::vec3* position_buffer,
-                                 glm::vec3* out_buffer, int step_width)
+__global__ void
+denoising_kernel(unsigned int width, unsigned int height,
+                 EdgeAvoidingATrousDenoiser::Parameters parameters,
+                 const glm::vec3* color_buffer, const glm::vec3* normal_buffer,
+                 const glm::vec3* position_buffer, glm::vec3* out_buffer,
+                 int step_width)
 {
   const auto [x, y] = cuda::calculate_index_2d();
   if (x >= width || y >= height) return;
@@ -68,7 +69,7 @@ __global__ void denoising_kernel(unsigned int width, unsigned int height,
 auto EdgeAvoidingATrousDenoiser::denoise(
     unsigned int width, unsigned int height, const glm::vec3* color_buffer,
     const glm::vec3* normal_buffer, const glm::vec3* position_buffer,
-    glm::vec3* buffer1, glm::vec3* buffer2) -> glm::vec3*
+    glm::vec3* back_buffer, glm::vec3* front_buffer) -> glm::vec3*
 {
   constexpr unsigned int block_size = 16;
   const dim3 threads_per_block(block_size, block_size);
@@ -77,14 +78,16 @@ auto EdgeAvoidingATrousDenoiser::denoise(
   const auto blocks_y = (height + block_size - 1) / block_size;
   const dim3 full_blocks_per_grid(blocks_x, blocks_y);
 
-  for (int step_width = 1; step_width <= parameters.filter_size;
+  Parameters parameters_copy = parameters;
+  for (int step_width = 1; step_width <= parameters_copy.filter_size;
        step_width *= 2) {
     denoising_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-        width, height, parameters, color_buffer, normal_buffer, position_buffer,
-        buffer1, step_width);
-    std::tie(color_buffer, buffer1, buffer2) =
-        std::tie(buffer1, buffer2, buffer1);
+        width, height, parameters_copy, color_buffer, normal_buffer,
+        position_buffer, back_buffer, step_width);
+    std::tie(color_buffer, back_buffer, front_buffer) =
+        std::tie(back_buffer, front_buffer, back_buffer);
+    parameters_copy.color_weight /= 2;
   }
-  // check_CUDA_error("Denoising kernel");
-  return buffer2;
+  cuda::check_CUDA_error("Denoising kernel");
+  return front_buffer;
 }

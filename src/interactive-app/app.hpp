@@ -1,7 +1,7 @@
 #pragma once
 
-#include "camera.hpp"
-#include "path_tracer.hpp"
+#include "lib/camera.hpp"
+#include "lib/path_tracer.hpp"
 #include "window.hpp"
 
 #include <memory>
