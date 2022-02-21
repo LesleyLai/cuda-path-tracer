@@ -8,7 +8,7 @@
 #include "material.hpp"
 #include "ray.hpp"
 #include "scene.hpp"
-#include "scene_builder.hpp"
+#include "scene_description.hpp"
 
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
@@ -30,9 +30,9 @@ public:
 private:
   Aggregate aggregate_;
   cuda::Buffer<Material> dev_mat_;
-  cuda::Buffer<DiffuseMateral> dev_diffuse_mat_;
-  cuda::Buffer<MetalMaterial> dev_metal_mat_;
-  cuda::Buffer<DielectricMaterial> dev_dielectric_mat_;
+  // cuda::Buffer<DiffuseMateral> dev_diffuse_mat_;
+  // cuda::Buffer<MetalMaterial> dev_metal_mat_;
+  // cuda::Buffer<DielectricMaterial> dev_dielectric_mat_;
 
   cuda::Buffer<glm::vec3> dev_color_buffer_;
   cuda::Buffer<glm::vec3> dev_normal_buffer_;
@@ -58,7 +58,7 @@ public:
   void resize_image(unsigned int width, unsigned int height);
 
   void create_buffers(unsigned int width, unsigned int height,
-                      const SceneBuilder& scene);
+                      const SceneDescription& scene);
   void path_trace(const Camera& camera, unsigned int width,
                   unsigned int height);
   void send_to_preview(uchar4* dev_pbo, unsigned int width,

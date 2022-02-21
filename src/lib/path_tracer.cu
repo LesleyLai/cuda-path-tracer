@@ -27,16 +27,6 @@
 
 #include "intersections.cuh"
 
-static constexpr Material mat[] = {{Material::Type::Diffuse, 0},
-                                   {Material::Type::Diffuse, 1},
-                                   {Material::Type::Dielectric, 0},
-                                   {Material::Type::Metal, 0}};
-
-static const DiffuseMateral diffuse_mat[] = {{{0.8, 0.8, 0.0}},
-                                             {{0.1, 0.2, 0.5}}};
-static const MetalMaterial metal_mat[] = {{{0.8, 0.6, 0.2}, 1.0}};
-static const DielectricMaterial dielectric_mat[] = {{1.5}};
-
 [[nodiscard]] __device__ auto raygen(glm::mat4 camera_matrix, float fov,
                                      unsigned int width, unsigned int height,
                                      unsigned int x, unsigned int y,
@@ -167,18 +157,16 @@ __device__ static auto reflectance(float cosine, float ref_idx) -> float
 
 __device__ void evaluate_material(Ray& ray, const HitRecord record,
                                   thrust::default_random_engine& rng,
-                                  glm::vec3& color, Span<const Material> mat,
-                                  Span<const DiffuseMateral> diffuse_mat,
-                                  Span<const MetalMaterial> metal_mat,
-                                  Span<const DielectricMaterial> dielectric_mat)
+                                  glm::vec3& color, const Material* materials)
 {
   ray.origin = record.point - 1e-4f *
                                   glm::sign(dot(ray.direction, record.normal)) *
                                   record.normal;
   // material stuff
-  const Material& material = mat[record.material_id];
+  const Material& material = materials[record.material_id];
   switch (material.type) {
   case Material::Type::Diffuse: {
+    auto diffuse = material.data.diffuse;
     auto scatter_direction =
         glm::normalize(record.normal + random_in_unit_sphere(rng));
 
@@ -189,10 +177,10 @@ __device__ void evaluate_material(Ray& ray, const HitRecord record,
     }
 
     ray.direction = scatter_direction;
-    color *= diffuse_mat[material.index].albedo;
+    color *= diffuse.albedo;
   } break;
   case Material::Type::Metal: {
-    const auto metal = metal_mat[material.index];
+    const auto metal = material.data.metal;
     const auto reflected = glm::reflect(ray.direction, record.normal);
     const auto scatter_direction =
         reflected + metal.fuzz * random_in_unit_sphere(rng);
@@ -204,7 +192,7 @@ __device__ void evaluate_material(Ray& ray, const HitRecord record,
     }
   } break;
   case Material::Type::Dielectric: {
-    const auto dielectric = dielectric_mat[material.index];
+    const auto dielectric = material.data.dielectric;
     const auto refraction_ratio = record.side == HitFaceSide::front
                                       ? (1.0f / dielectric.refraction_index)
                                       : dielectric.refraction_index;
@@ -237,14 +225,13 @@ __device__ void evaluate_material(Ray& ray, const HitRecord record,
   return color;
 }
 
-__global__ void path_tracing_kernel(
-    unsigned int width, unsigned int height, glm::mat4 camera_matrix, float fov,
-    glm::vec3* color_buffer, glm::vec3* normal_buffer,
-    glm::vec3* position_buffer, std::size_t iteration, AggregateView aggregate,
-    Span<const Material> mat, Span<const DiffuseMateral> diffuse_mat,
-    Span<const MetalMaterial> metal_mat,
-    Span<const DielectricMaterial> dielectric_mat, const Vertex* vertices,
-    Span<const std::uint32_t> indices)
+__global__ void
+path_tracing_kernel(unsigned int width, unsigned int height,
+                    glm::mat4 camera_matrix, float fov, glm::vec3* color_buffer,
+                    glm::vec3* normal_buffer, glm::vec3* position_buffer,
+                    std::size_t iteration, AggregateView aggregate,
+                    const Material* mat, const Vertex* vertices,
+                    Span<const std::uint32_t> indices)
 {
   const auto [x, y] = cuda::calculate_index_2d();
   if (x >= width || y >= height) return;
@@ -268,8 +255,7 @@ __global__ void path_tracing_kernel(
       break;
     }
 
-    evaluate_material(ray, record, rng, color, mat, diffuse_mat, metal_mat,
-                      dielectric_mat);
+    evaluate_material(ray, record, rng, color, mat);
     if (i == 0) {
       normal = record.normal;
       position = record.point;
@@ -379,11 +365,8 @@ void PathTracer::path_trace(const Camera& camera, unsigned int width,
         width, height, camera.camera_matrix(), camera.fov(),
         dev_color_buffer_.data(), dev_normal_buffer_.data(),
         dev_position_buffer_.data(), iteration_, AggregateView{aggregate_},
-        Span{dev_mat_.data(), std::size(mat)},
-        Span{dev_diffuse_mat_.data(), std::size(diffuse_mat)},
-        Span{dev_metal_mat_.data(), std::size(metal_mat)},
-        Span{dev_dielectric_mat_.data(), std::size(dielectric_mat)},
-        cube_.vertices.data(), Span{cube_.indices.data(), cube_.indices_count});
+        dev_mat_.data(), cube_.vertices.data(),
+        Span{cube_.indices.data(), cube_.indices_count});
     cuda::check_CUDA_error("Path Tracing kernel");
 
     ++iteration_;
@@ -452,12 +435,15 @@ void PathTracer::resize_image(unsigned int width, unsigned int height)
 }
 
 void PathTracer::create_buffers(unsigned int width, unsigned int height,
-                                const SceneBuilder& scene)
+                                const SceneDescription& scene)
 {
   aggregate_ = scene.build();
-  dev_mat_ = cuda::create_buffer_from_cpu_data(Span{mat});
-  dev_diffuse_mat_ = cuda::create_buffer_from_cpu_data(Span{diffuse_mat});
-  dev_metal_mat_ = cuda::create_buffer_from_cpu_data(Span{metal_mat});
-  dev_dielectric_mat_ = cuda::create_buffer_from_cpu_data(Span{dielectric_mat});
+
+  static const Material materials[] = {DiffuseMateral{{0.8, 0.8, 0.0}}, //
+                                       DiffuseMateral{{0.1, 0.2, 0.5}}, //
+                                       DielectricMaterial{1.5},         //
+                                       MetalMaterial{{0.8, 0.6, 0.2}, 1.0}};
+
+  dev_mat_ = cuda::create_buffer_from_cpu_data(Span{materials});
   resize_image(width, height);
 }

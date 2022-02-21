@@ -1,5 +1,5 @@
-#ifndef CUDA_PATH_TRACER_SCENE_BUILDER_HPP
-#define CUDA_PATH_TRACER_SCENE_BUILDER_HPP
+#ifndef CUDA_PATH_TRACER_SCENE_DESCRIPTION_HPP
+#define CUDA_PATH_TRACER_SCENE_DESCRIPTION_HPP
 
 #include "mesh.hpp"
 #include "sphere.hpp"
@@ -10,7 +10,7 @@
 #include <variant>
 #include <vector>
 
-class SceneBuilder {
+class SceneDescription {
   using CPUObject = std::variant<Sphere, Triangle, Mesh>;
   std::vector<CPUObject> objects_;
   std::vector<std::uint32_t> objects_material_indices_;
@@ -25,4 +25,4 @@ public:
   [[nodiscard]] auto build() const -> Aggregate;
 };
 
-#endif // CUDA_PATH_TRACER_SCENE_BUILDER_HPP
+#endif // CUDA_PATH_TRACER_SCENE_DESCRIPTION_HPP

@@ -1,11 +1,11 @@
-#include "scene_builder.hpp"
+#include "scene_description.hpp"
 
 template <class... Ts> struct overloaded : Ts... {
   using Ts::operator()...;
 };
 template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
-auto SceneBuilder::build() const -> Aggregate
+auto SceneDescription::build() const -> Aggregate
 {
   std::vector<GPUObject> gpu_objects;
   std::vector<Sphere> spheres;

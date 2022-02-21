@@ -51,6 +51,12 @@ template <typename T>
   return dev_buffer;
 }
 
+template <typename T>
+[[nodiscard]] auto create_buffer_from_cpu_data(Span<T> span)
+{
+  return create_buffer_from_cpu_data(Span<const T>{span});
+}
+
 } // namespace cuda
 
 #endif // CUDA_PATH_TRACER_CUDA_BUFFER_HPP

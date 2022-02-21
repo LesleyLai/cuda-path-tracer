@@ -148,7 +148,7 @@ App::App()
   const auto [width, height] = window_.resolution();
   preview_ = std::make_unique<PreviewRenderer>(width, height);
 
-  SceneBuilder scene;
+  SceneDescription scene;
   scene.add_object(Sphere{{0.0f, -100.5f, -1.0f}, 100.f}, 0);
   scene.add_object(Sphere{{0.0f, 0.0f, -1.0f}, 0.5f}, 1);
   scene.add_object(Sphere{{-1.0f, 0.0f, -1.0f}, 0.5f}, 2);

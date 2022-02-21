@@ -22,9 +22,9 @@ add_library(cuda_pt_lib
         triangle.hpp
         scene.hpp
         material.hpp
-        scene_builder.hpp
+        scene_description.hpp
         mesh.hpp
-        scene_builder.cpp
+        scene_description.cpp
         denoising/edge_avoiding_a_trous_denoiser.cu
         denoising/edge_avoiding_a_trous_denoiser.hpp
         )
