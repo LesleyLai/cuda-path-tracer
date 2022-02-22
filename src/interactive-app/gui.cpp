@@ -110,8 +110,7 @@ void draw_path_tracer_gui(PathTracer& path_tracer)
 
 void draw_display_gui(PathTracer& path_tracer)
 {
-  constexpr const char* items[] = {"Path Tracing", "Color", "Normal",
-                                   "Position"};
+  constexpr const char* items[] = {"Path Tracing", "Color", "Normal", "Depth"};
   static int item_current = 0;
   ImGui::Combo("buffer", &item_current, items, IM_ARRAYSIZE(items));
 

@@ -27,7 +27,7 @@ add_library(cuda_pt_lib
         scene_description.cpp
         denoising/edge_avoiding_a_trous_denoiser.cu
         denoising/edge_avoiding_a_trous_denoiser.hpp
-        )
+        ray_gen.cu ray_gen.cuh)
 add_library(cuda_pt::lib ALIAS cuda_pt_lib)
 
 target_link_libraries(cuda_pt_lib PUBLIC fmt::fmt glm::glm
@@ -38,4 +38,5 @@ target_link_libraries(cuda_pt_lib PUBLIC fmt::fmt glm::glm
         CUDA::cudart)
 target_include_directories(cuda_pt_lib PUBLIC ${PROJECT_SOURCE_DIR}/src)
 set_property(TARGET cuda_pt_lib PROPERTY CUDA_ARCHITECTURES OFF)
+set_property(TARGET cuda_pt_lib PROPERTY CUDA_SEPARABLE_COMPILATION ON)
 

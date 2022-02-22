@@ -17,7 +17,7 @@
 
 class Camera;
 
-enum DisplayBuffer { path_tracing, color, normal, position };
+enum class DisplayBuffer { path_tracing, color, normal, depth };
 
 class PathTracer {
 public:
@@ -32,7 +32,7 @@ private:
 
   cuda::Buffer<glm::vec3> dev_color_buffer_;
   cuda::Buffer<glm::vec3> dev_normal_buffer_;
-  cuda::Buffer<glm::vec3> dev_position_buffer_;
+  cuda::Buffer<float> dev_depth_buffer_;
 
   cuda::Buffer<glm::vec3> dev_denoised_buffer_;
   cuda::Buffer<glm::vec3> dev_denoised_buffer2_;

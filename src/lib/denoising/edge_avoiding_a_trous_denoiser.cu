@@ -6,13 +6,13 @@
 
 #include "../cuda_utils/2d_indices.cuh"
 #include "../cuda_utils/cuda_check.hpp"
+#include "../ray_gen.cuh"
 
-__global__ void
-denoising_kernel(unsigned int width, unsigned int height,
-                 EdgeAvoidingATrousDenoiser::Parameters parameters,
-                 const glm::vec3* color_buffer, const glm::vec3* normal_buffer,
-                 const glm::vec3* position_buffer, glm::vec3* out_buffer,
-                 int step_width)
+__global__ void denoising_kernel(
+    unsigned int width, unsigned int height, glm::mat4 camera_matrix,
+    float camera_fov, EdgeAvoidingATrousDenoiser::Parameters parameters,
+    const glm::vec3* color_buffer, const glm::vec3* normal_buffer,
+    const float* depth_buffer, glm::vec3* out_buffer, int step_width)
 {
   const auto [x, y] = cuda::calculate_index_2d();
   if (x >= width || y >= height) return;
@@ -27,7 +27,10 @@ denoising_kernel(unsigned int width, unsigned int height,
 
   const glm::vec3 cval = color_buffer[index];
   const glm::vec3 nval = normal_buffer[index];
-  const glm::vec3 pval = position_buffer[index];
+
+  const auto ray = generate_ray(camera_matrix, camera_fov, width, height,
+                                x + 0.5f, y + 0.5f);
+  const glm::vec3 pval = ray(depth_buffer[index]);
 
   glm::vec3 sum{0.0};
   float cum_w = 0.0;
@@ -50,7 +53,9 @@ denoising_kernel(unsigned int width, unsigned int height,
           glm::dot(t, t) / static_cast<float>(step_width * step_width), 0.0f);
       const float n_w = std::min(std::exp(-dist2 / n_phi), 1.0f);
 
-      const glm::vec3 ptmp = position_buffer[temp_index];
+      const auto temp_ray = generate_ray(camera_matrix, camera_fov, width,
+                                         height, u + 0.5f, v + 0.5f);
+      const glm::vec3 ptmp = temp_ray(depth_buffer[temp_index]);
       t = pval - ptmp;
       dist2 = glm::dot(t, t);
       const float p_w = std::min(std::exp(-dist2 / p_phi), 1.0f);
@@ -67,8 +72,9 @@ denoising_kernel(unsigned int width, unsigned int height,
 }
 
 auto EdgeAvoidingATrousDenoiser::denoise(
-    unsigned int width, unsigned int height, const glm::vec3* color_buffer,
-    const glm::vec3* normal_buffer, const glm::vec3* position_buffer,
+    unsigned int width, unsigned int height, glm::mat4 camera_matrix,
+    float camera_fov, const glm::vec3* color_buffer,
+    const glm::vec3* normal_buffer, const float* depth_buffer,
     glm::vec3* back_buffer, glm::vec3* front_buffer) -> glm::vec3*
 {
   constexpr unsigned int block_size = 16;
@@ -82,8 +88,8 @@ auto EdgeAvoidingATrousDenoiser::denoise(
   for (int step_width = 1; step_width <= parameters_copy.filter_size;
        step_width *= 2) {
     denoising_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-        width, height, parameters_copy, color_buffer, normal_buffer,
-        position_buffer, back_buffer, step_width);
+        width, height, camera_matrix, camera_fov, parameters_copy, color_buffer,
+        normal_buffer, depth_buffer, back_buffer, step_width);
     std::tie(color_buffer, back_buffer, front_buffer) =
         std::tie(back_buffer, front_buffer, back_buffer);
     parameters_copy.color_weight /= 2;

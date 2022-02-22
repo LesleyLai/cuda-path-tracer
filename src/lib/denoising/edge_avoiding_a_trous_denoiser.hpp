@@ -1,7 +1,7 @@
 #ifndef CUDA_PATH_TRACER_EDGE_AVOIDING_A_TROUS_DENOISER_HPP
 #define CUDA_PATH_TRACER_EDGE_AVOIDING_A_TROUS_DENOISER_HPP
 
-#include <glm/vec3.hpp>
+#include <glm/glm.hpp>
 
 class EdgeAvoidingATrousDenoiser {
 public:
@@ -17,11 +17,11 @@ public:
    * @return A pointer to the buffer of denoising output
    */
   [[nodiscard]] auto denoise(unsigned int width, unsigned int height,
+                             glm::mat4 camera_matrix, float camera_fov,
                              const glm::vec3* color_buffer,
                              const glm::vec3* normal_buffer,
-                             const glm::vec3* position_buffer,
-                             glm::vec3* back_buffer, glm::vec3* front_buffer)
-      -> glm::vec3*;
+                             const float* depth_buffer, glm::vec3* back_buffer,
+                             glm::vec3* front_buffer) -> glm::vec3*;
 };
 
 #endif // CUDA_PATH_TRACER_EDGE_AVOIDING_A_TROUS_DENOISER_HPP

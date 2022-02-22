@@ -4,6 +4,7 @@
 #include "cuda_utils/2d_indices.cuh"
 #include "cuda_utils/cuda_buffer.hpp"
 #include "distributions.cuh"
+#include "ray_gen.cuh"
 #include "span.hpp"
 
 #include <cstddef>
@@ -26,39 +27,6 @@
 #include <glm/gtx/compatibility.hpp>
 
 #include "intersections.cuh"
-
-[[nodiscard]] __device__ auto raygen(glm::mat4 camera_matrix, float fov,
-                                     unsigned int width, unsigned int height,
-                                     unsigned int x, unsigned int y,
-                                     thrust::default_random_engine& rng) -> Ray
-{
-  const float aspect_ratio =
-      static_cast<float>(width) / static_cast<float>(height);
-
-  const float viewport_height = 2.0f * tan(fov / 2);
-  const float viewport_width = aspect_ratio * viewport_height;
-  const float focal_length = 1.0;
-
-  const auto origin = glm::vec3(0, 0, 0);
-  const auto horizontal = glm::vec3(viewport_width, 0, 0);
-  const auto vertical = glm::vec3(0, viewport_height, 0);
-  const auto lower_left_corner = origin - horizontal / 2.f - vertical / 2.f -
-                                 glm::vec3(0, 0, focal_length);
-
-  thrust::uniform_real_distribution<float> dist(0.0, 1.0);
-
-  const auto u =
-      (static_cast<float>(x) + dist(rng)) / static_cast<float>(width - 1);
-  const auto v =
-      (static_cast<float>(y) + dist(rng)) / static_cast<float>(height - 1);
-  const auto direction =
-      lower_left_corner + u * horizontal + v * vertical - origin;
-
-  const auto world_origin = glm::vec3(camera_matrix * glm::vec4(origin, 1.0));
-  const auto world_direction =
-      glm::normalize(glm::vec3(camera_matrix * glm::vec4(direction, 0.0)));
-  return Ray{world_origin, 1e-4, world_direction, FLT_MAX};
-}
 
 __device__ auto get_background_color(Ray r) -> glm::vec3
 {
@@ -225,13 +193,11 @@ __device__ void evaluate_material(Ray& ray, const HitRecord record,
   return color;
 }
 
-__global__ void
-path_tracing_kernel(unsigned int width, unsigned int height,
-                    glm::mat4 camera_matrix, float fov, glm::vec3* color_buffer,
-                    glm::vec3* normal_buffer, glm::vec3* position_buffer,
-                    std::size_t iteration, AggregateView aggregate,
-                    const Material* mat, const Vertex* vertices,
-                    Span<const std::uint32_t> indices)
+__global__ void path_tracing_kernel(
+    unsigned int width, unsigned int height, glm::mat4 camera_matrix, float fov,
+    glm::vec3* color_buffer, glm::vec3* normal_buffer, float* depth_buffer,
+    std::size_t iteration, AggregateView aggregate, const Material* mat,
+    const Vertex* vertices, Span<const std::uint32_t> indices)
 {
   const auto [x, y] = cuda::calculate_index_2d();
   if (x >= width || y >= height) return;
@@ -239,12 +205,16 @@ path_tracing_kernel(unsigned int width, unsigned int height,
 
   thrust::default_random_engine rng(hash(hash(index) ^ iteration));
 
-  auto ray = raygen(camera_matrix, fov, width, height, x, y, rng);
+  thrust::uniform_real_distribution<float> dist(0.0, 1.0);
+  const auto fx = static_cast<float>(x) + dist(rng);
+  const auto fy = static_cast<float>(y) + dist(rng);
+
+  auto ray = generate_ray(camera_matrix, fov, width, height, fx, fy);
 
   // Path tracing
   glm::vec3 color{1.0f, 1.0f, 1.0f};
   glm::vec3 normal = -ray.direction;
-  glm::vec3 position = ray(1e6);
+  float depth = 1e6;
 
   for (int i = 0; i < 50; ++i) {
     HitRecord record;
@@ -258,7 +228,7 @@ path_tracing_kernel(unsigned int width, unsigned int height,
     evaluate_material(ray, record, rng, color, mat);
     if (i == 0) {
       normal = record.normal;
-      position = record.point;
+      depth = record.t;
     }
   }
 
@@ -267,18 +237,41 @@ path_tracing_kernel(unsigned int width, unsigned int height,
   if (iteration == 0) {
     color_buffer[index] = color;
     normal_buffer[index] = normal;
-    position_buffer[index] = position;
+    depth_buffer[index] = depth;
   } else {
     color_buffer[index] =
         (color_buffer[index] * (sample_count - 1) + color) / sample_count;
     normal_buffer[index] =
         (normal_buffer[index] * (sample_count - 1) + normal) / sample_count;
-    position_buffer[index] =
-        (position_buffer[index] * (sample_count - 1) + position) / sample_count;
+    depth_buffer[index] =
+        (depth_buffer[index] * (sample_count - 1) + depth) / sample_count;
   }
 }
 
 enum class BufferNormalizationMethod { none, neg1_1_to_0_1 };
+
+__global__ void preview_depth_kernel(unsigned int width, unsigned int height,
+                                     const float* depth_buffer, uchar4* pbo)
+{
+  const auto [x, y] = cuda::calculate_index_2d();
+  if (x >= width || y >= height) return;
+  const auto index = FLATTERN_INDEX(x, y);
+
+  const float depth = depth_buffer[index];
+  glm::vec3 color{1 / depth};
+
+  constexpr auto color_float_to_255 = [](float v) {
+    return static_cast<unsigned char>(glm::clamp(v, 0.f, 1.f) * 255.99f);
+  };
+
+  color = gamma_correction(color);
+
+  if (x <= width && y <= height) {
+    pbo[index] =
+        uchar4{color_float_to_255(color.x), color_float_to_255(color.y),
+               color_float_to_255(color.z), 1};
+  }
+}
 
 __global__ void preview_kernel(unsigned int width, unsigned int height,
                                BufferNormalizationMethod normalization_method,
@@ -364,7 +357,7 @@ void PathTracer::path_trace(const Camera& camera, unsigned int width,
     path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
         width, height, camera.camera_matrix(), camera.fov(),
         dev_color_buffer_.data(), dev_normal_buffer_.data(),
-        dev_position_buffer_.data(), iteration_,
+        dev_depth_buffer_.data(), iteration_,
         AggregateView{dev_scene_.aggregate}, dev_scene_.materials.data(),
         cube_.vertices.data(), Span{cube_.indices.data(), cube_.indices_count});
     cuda::check_CUDA_error("Path Tracing kernel");
@@ -375,8 +368,9 @@ void PathTracer::path_trace(const Camera& camera, unsigned int width,
   path_trace_result_buffer_ = dev_color_buffer_.data();
   if (enable_denoising) {
     path_trace_result_buffer_ = atrous_denoiser.denoise(
-        width, height, dev_color_buffer_.data(), dev_normal_buffer_.data(),
-        dev_position_buffer_.data(), dev_denoised_buffer_.data(),
+        width, height, camera.camera_matrix(), camera.fov(),
+        dev_color_buffer_.data(), dev_normal_buffer_.data(),
+        dev_depth_buffer_.data(), dev_denoised_buffer_.data(),
         dev_denoised_buffer2_.data());
   }
 }
@@ -407,10 +401,9 @@ void PathTracer::send_to_preview(uchar4* dev_pbo, unsigned int width,
         width, height, BufferNormalizationMethod::neg1_1_to_0_1,
         dev_normal_buffer_.data(), dev_pbo);
     break;
-  case DisplayBuffer::position:
-    preview_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-        width, height, BufferNormalizationMethod::none,
-        dev_position_buffer_.data(), dev_pbo);
+  case DisplayBuffer::depth:
+    preview_depth_kernel<<<full_blocks_per_grid, threads_per_block>>>(
+        width, height, dev_depth_buffer_.data(), dev_pbo);
     break;
   }
   cuda::check_CUDA_error("Preview kernel");
@@ -427,7 +420,7 @@ void PathTracer::resize_image(unsigned int width, unsigned int height)
   const auto image_size = width * height;
   dev_color_buffer_ = cuda::make_buffer<glm::vec3>(image_size);
   dev_normal_buffer_ = cuda::make_buffer<glm::vec3>(image_size);
-  dev_position_buffer_ = cuda::make_buffer<glm::vec3>(image_size);
+  dev_depth_buffer_ = cuda::make_buffer<float>(image_size);
   dev_denoised_buffer_ = cuda::make_buffer<glm::vec3>(image_size);
   dev_denoised_buffer2_ = cuda::make_buffer<glm::vec3>(image_size);
   CUDA_CHECK(cudaDeviceSynchronize());
