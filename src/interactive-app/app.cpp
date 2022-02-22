@@ -148,21 +148,26 @@ App::App()
   const auto [width, height] = window_.resolution();
   preview_ = std::make_unique<PreviewRenderer>(width, height);
 
-  SceneDescription scene;
-  scene.add_object(Sphere{{0.0f, -100.5f, -1.0f}, 100.f}, 0);
-  scene.add_object(Sphere{{0.0f, 0.0f, -1.0f}, 0.5f}, 1);
-  scene.add_object(Sphere{{-1.0f, 0.0f, -1.0f}, 0.5f}, 2);
-  scene.add_object(Sphere{{1.0f, 0.0f, -1.0f}, 0.5f}, 3);
-  scene.add_object(
+  SceneDescription scene_desc;
+  scene_desc.add_material("ground", DiffuseMateral{{0.8, 0.8, 0.0}});
+  scene_desc.add_material("blue", DiffuseMateral{{0.1, 0.2, 0.5}});
+  scene_desc.add_material("dielectric", DielectricMaterial{1.5});
+  scene_desc.add_material("metal", MetalMaterial{{0.8, 0.6, 0.2}, 1.0});
+
+  scene_desc.add_object(Sphere{{0.0f, -100.5f, -1.0f}, 100.f}, "ground");
+  scene_desc.add_object(Sphere{{0.0f, 0.0f, -1.0f}, 0.5f}, "blue");
+  scene_desc.add_object(Sphere{{-1.0f, 0.0f, -1.0f}, 0.5f}, "dielectric");
+  scene_desc.add_object(Sphere{{1.0f, 0.0f, -1.0f}, 0.5f}, "metal");
+  scene_desc.add_object(
       Triangle{
           {0.0f, 0.0f, 2.0f},
           {0.0f, 10.0f, 2.0f},
           {10.0f, 0.0f, 2.0f},
       },
-      1);
-  scene.add_object(Mesh{}, 1);
+      "blue");
+  scene_desc.add_object(Mesh{}, "blue");
   path_tracer_.create_buffers(static_cast<unsigned int>(width),
-                              static_cast<unsigned int>(height), scene);
+                              static_cast<unsigned int>(height), scene_desc);
 
   init_imgui(window_.get());
 }

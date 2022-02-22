@@ -42,4 +42,9 @@ struct AggregateView {
   }
 };
 
+struct Scene {
+  Aggregate aggregate;
+  cuda::Buffer<Material> materials;
+};
+
 #endif // CUDA_PATH_TRACER_SCENE_HPP

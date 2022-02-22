@@ -1,0 +1,4 @@
+.github/** linguist-vendored
+third-party/** linguist-vendored
+cmake/* linguist-vendored
+scripts/actions/* linguist-vendored

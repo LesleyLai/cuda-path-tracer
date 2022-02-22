@@ -1,6 +1,8 @@
 #ifndef CUDA_PATH_TRACER_MATERIAL_HPP
 #define CUDA_PATH_TRACER_MATERIAL_HPP
 
+#include <glm/vec3.hpp>
+
 struct DiffuseMateral {
   glm::vec3 albedo;
 };

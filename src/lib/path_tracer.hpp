@@ -23,16 +23,12 @@ class PathTracer {
 public:
   int max_iterations = 10000;
 
-  bool enable_denoising = true;
+  bool enable_denoising = false;
 
   EdgeAvoidingATrousDenoiser atrous_denoiser{};
 
 private:
-  Aggregate aggregate_;
-  cuda::Buffer<Material> dev_mat_;
-  // cuda::Buffer<DiffuseMateral> dev_diffuse_mat_;
-  // cuda::Buffer<MetalMaterial> dev_metal_mat_;
-  // cuda::Buffer<DielectricMaterial> dev_dielectric_mat_;
+  Scene dev_scene_;
 
   cuda::Buffer<glm::vec3> dev_color_buffer_;
   cuda::Buffer<glm::vec3> dev_normal_buffer_;

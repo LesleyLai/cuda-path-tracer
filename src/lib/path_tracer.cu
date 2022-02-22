@@ -364,9 +364,9 @@ void PathTracer::path_trace(const Camera& camera, unsigned int width,
     path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
         width, height, camera.camera_matrix(), camera.fov(),
         dev_color_buffer_.data(), dev_normal_buffer_.data(),
-        dev_position_buffer_.data(), iteration_, AggregateView{aggregate_},
-        dev_mat_.data(), cube_.vertices.data(),
-        Span{cube_.indices.data(), cube_.indices_count});
+        dev_position_buffer_.data(), iteration_,
+        AggregateView{dev_scene_.aggregate}, dev_scene_.materials.data(),
+        cube_.vertices.data(), Span{cube_.indices.data(), cube_.indices_count});
     cuda::check_CUDA_error("Path Tracing kernel");
 
     ++iteration_;
@@ -435,15 +435,8 @@ void PathTracer::resize_image(unsigned int width, unsigned int height)
 }
 
 void PathTracer::create_buffers(unsigned int width, unsigned int height,
-                                const SceneDescription& scene)
+                                const SceneDescription& scene_description)
 {
-  aggregate_ = scene.build();
-
-  static const Material materials[] = {DiffuseMateral{{0.8, 0.8, 0.0}}, //
-                                       DiffuseMateral{{0.1, 0.2, 0.5}}, //
-                                       DielectricMaterial{1.5},         //
-                                       MetalMaterial{{0.8, 0.6, 0.2}, 1.0}};
-
-  dev_mat_ = cuda::create_buffer_from_cpu_data(Span{materials});
+  dev_scene_ = scene_description.build();
   resize_image(width, height);
 }
