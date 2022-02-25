@@ -1,18 +1,17 @@
 #include "app.hpp"
 
+#include "../lib/scene_parser.hpp"
+#include "gui.hpp"
 #include "preview_renderer.hpp"
 
+#include <GLFW/glfw3.h>
+#include <algorithm>
+#include <cuda_runtime_api.h>
 #include <fmt/format.h>
 
-#include <algorithm>
+#include <chrono>
 
-#include "gui.hpp"
-
-#include <GLFW/glfw3.h>
-
-#include <cuda_runtime_api.h>
-
-App::App()
+App::App(std::span<char*> args)
 {
   int gpu_device = 0;
   int device_count = 0;
@@ -148,24 +147,12 @@ App::App()
   const auto [width, height] = window_.resolution();
   preview_ = std::make_unique<PreviewRenderer>(width, height);
 
-  SceneDescription scene_desc;
-  scene_desc.add_material("ground", DiffuseMateral{{0.8, 0.8, 0.0}});
-  scene_desc.add_material("blue", DiffuseMateral{{0.1, 0.2, 0.5}});
-  scene_desc.add_material("dielectric", DielectricMaterial{1.5});
-  scene_desc.add_material("metal", MetalMaterial{{0.8, 0.6, 0.2}, 1.0});
+  if (args.size() != 2) {
+    fmt::print(stderr, "Usage: {} <filename>", args[0]);
+    std::exit(1);
+  }
 
-  scene_desc.add_object(Sphere{{0.0f, -100.5f, -1.0f}, 100.f}, "ground");
-  scene_desc.add_object(Sphere{{0.0f, 0.0f, -1.0f}, 0.5f}, "blue");
-  scene_desc.add_object(Sphere{{-1.0f, 0.0f, -1.0f}, 0.5f}, "dielectric");
-  scene_desc.add_object(Sphere{{1.0f, 0.0f, -1.0f}, 0.5f}, "metal");
-  scene_desc.add_object(
-      Triangle{
-          {0.0f, 0.0f, 2.0f},
-          {0.0f, 10.0f, 2.0f},
-          {10.0f, 0.0f, 2.0f},
-      },
-      "blue");
-  scene_desc.add_object(Mesh{}, "blue");
+  SceneDescription scene_desc = read_scene(args[1]);
   path_tracer_.create_buffers(static_cast<unsigned int>(width),
                               static_cast<unsigned int>(height), scene_desc);
 
@@ -179,12 +166,19 @@ App::~App()
 
 void App::run_cuda()
 {
-  preview_->map_pbo([&](uchar4* dev_pbo) {
-    const auto resolution = window_.resolution();
+  const auto resolution = window_.resolution();
+  const auto u_width = static_cast<unsigned int>(resolution.width);
+  const auto u_height = static_cast<unsigned int>(resolution.height);
 
-    const auto u_width = static_cast<unsigned int>(resolution.width);
-    const auto u_height = static_cast<unsigned int>(resolution.height);
+  using namespace std::chrono_literals;
+  using Clock = std::chrono::system_clock;
+  const auto start_time = Clock::now();
+  do {
     path_tracer_.path_trace(camera_, u_width, u_height);
+    CUDA_CHECK(cudaDeviceSynchronize());
+  } while (Clock::now() - start_time < 16ms);
+
+  preview_->map_pbo([&](uchar4* dev_pbo) {
     path_tracer_.send_to_preview(dev_pbo, u_width, u_height);
   });
 }

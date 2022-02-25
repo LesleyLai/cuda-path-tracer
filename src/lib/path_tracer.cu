@@ -1,6 +1,7 @@
 #include "path_tracer.hpp"
 
 #include "camera.hpp"
+#include "constant_memory.cuh"
 #include "cuda_utils/2d_indices.cuh"
 #include "cuda_utils/cuda_buffer.hpp"
 #include "distributions.cuh"
@@ -193,15 +194,18 @@ __device__ void evaluate_material(Ray& ray, const HitRecord record,
   return color;
 }
 
-__global__ void path_tracing_kernel(
-    unsigned int width, unsigned int height, glm::mat4 camera_matrix, float fov,
-    glm::vec3* color_buffer, glm::vec3* normal_buffer, float* depth_buffer,
-    std::size_t iteration, AggregateView aggregate, const Material* mat,
-    const Vertex* vertices, Span<const std::uint32_t> indices)
+__global__ void path_tracing_kernel(glm::vec3* color_buffer,
+                                    glm::vec3* normal_buffer,
+                                    float* depth_buffer, std::size_t iteration,
+                                    AggregateView aggregate,
+                                    const Material* mat, const Vertex* vertices,
+                                    Span<const std::uint32_t> indices)
 {
+  GPUCamera camera = constant_memory::gpu_camera;
+
   const auto [x, y] = cuda::calculate_index_2d();
-  if (x >= width || y >= height) return;
-  const auto index = FLATTERN_INDEX(x, y);
+  if (x >= camera.width || y >= camera.height) return;
+  const auto index = cuda::flattern_index({x, y}, camera.width, camera.height);
 
   thrust::default_random_engine rng(hash(hash(index) ^ iteration));
 
@@ -209,7 +213,7 @@ __global__ void path_tracing_kernel(
   const auto fx = static_cast<float>(x) + dist(rng);
   const auto fy = static_cast<float>(y) + dist(rng);
 
-  auto ray = generate_ray(camera_matrix, fov, width, height, fx, fy);
+  auto ray = generate_ray(camera, fx, fy);
 
   // Path tracing
   glm::vec3 color{1.0f, 1.0f, 1.0f};
@@ -234,17 +238,18 @@ __global__ void path_tracing_kernel(
 
   // Final gathering
   const auto sample_count = static_cast<float>(iteration + 1);
+  const auto temporal_accumulate = [sample_count](auto value, auto current) {
+    return (value * (sample_count - 1) + current) / sample_count;
+  };
+
   if (iteration == 0) {
     color_buffer[index] = color;
     normal_buffer[index] = normal;
     depth_buffer[index] = depth;
   } else {
-    color_buffer[index] =
-        (color_buffer[index] * (sample_count - 1) + color) / sample_count;
-    normal_buffer[index] =
-        (normal_buffer[index] * (sample_count - 1) + normal) / sample_count;
-    depth_buffer[index] =
-        (depth_buffer[index] * (sample_count - 1) + depth) / sample_count;
+    color_buffer[index] = temporal_accumulate(color_buffer[index], color);
+    normal_buffer[index] = temporal_accumulate(normal_buffer[index], normal);
+    depth_buffer[index] = temporal_accumulate(depth_buffer[index], depth);
   }
 }
 
@@ -255,7 +260,7 @@ __global__ void preview_depth_kernel(unsigned int width, unsigned int height,
 {
   const auto [x, y] = cuda::calculate_index_2d();
   if (x >= width || y >= height) return;
-  const auto index = FLATTERN_INDEX(x, y);
+  const auto index = cuda::flattern_index({x, y}, width, height);
 
   const float depth = depth_buffer[index];
   glm::vec3 color{1 / depth};
@@ -279,7 +284,7 @@ __global__ void preview_kernel(unsigned int width, unsigned int height,
 {
   const auto [x, y] = cuda::calculate_index_2d();
   if (x >= width || y >= height) return;
-  const auto index = FLATTERN_INDEX(x, y);
+  const auto index = cuda::flattern_index({x, y}, width, height);
 
   auto color = buffer[index];
 
@@ -353,9 +358,14 @@ void PathTracer::path_trace(const Camera& camera, unsigned int width,
   const auto blocks_y = (height + block_size - 1) / block_size;
   const dim3 full_blocks_per_grid(blocks_x, blocks_y);
 
+  auto gpu_camera = camera.generate_gpu_camera();
+  gpu_camera.width = width;
+  gpu_camera.height = height;
+  cudaMemcpyToSymbol(constant_memory::gpu_camera, &gpu_camera,
+                     sizeof(GPUCamera));
+
   if (iteration_ < max_iterations) {
     path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-        width, height, camera.camera_matrix(), camera.fov(),
         dev_color_buffer_.data(), dev_normal_buffer_.data(),
         dev_depth_buffer_.data(), iteration_,
         AggregateView{dev_scene_.aggregate}, dev_scene_.materials.data(),
@@ -368,8 +378,7 @@ void PathTracer::path_trace(const Camera& camera, unsigned int width,
   path_trace_result_buffer_ = dev_color_buffer_.data();
   if (enable_denoising) {
     path_trace_result_buffer_ = atrous_denoiser.denoise(
-        width, height, camera.camera_matrix(), camera.fov(),
-        dev_color_buffer_.data(), dev_normal_buffer_.data(),
+        width, height, dev_color_buffer_.data(), dev_normal_buffer_.data(),
         dev_depth_buffer_.data(), dev_denoised_buffer_.data(),
         dev_denoised_buffer2_.data());
   }

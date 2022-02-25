@@ -6,3 +6,4 @@ build
 
 # Copied by conan
 third-party/imgui/bindings
+*/imgui.ini

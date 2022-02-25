@@ -3,6 +3,13 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
 
+struct GPUCamera {
+  glm::mat4 camera_matrix = {};
+  float fov = 0;
+  unsigned int width = 0;
+  unsigned int height = 0;
+};
+
 class Camera {
   glm::vec3 position_ = glm::vec3(0.0);
 
@@ -53,10 +60,12 @@ public:
 
   [[nodiscard]] auto camera_matrix() const -> glm::mat4;
 
+  [[nodiscard]] auto generate_gpu_camera() const -> GPUCamera;
+
   enum class MoveDirection { up, down, left, right, forward, backward };
   void move(MoveDirection direction);
   void mouse_move(float x_offset, float y_offset);
 
-  /// @brief Reset camera states to default
+  /// @brief Reset gpu_camera states to default
   void reset();
 };

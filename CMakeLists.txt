@@ -9,6 +9,8 @@ include("cmake/compiler.cmake")
 include("cmake/conan.cmake")
 run_conan()
 
+option(CUDA_PATH_TRACER_COPY_ASSETS "Copy assets to the build directory" ON)
+
 add_subdirectory(third-party)
 add_subdirectory(src)
 add_subdirectory(test)

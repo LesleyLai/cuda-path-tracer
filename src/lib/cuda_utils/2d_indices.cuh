@@ -15,8 +15,13 @@ struct Index2D {
   return Index2D{x, y};
 }
 
-} // namespace cuda
+[[nodiscard]] __device__ constexpr auto
+flattern_index(Index2D index2D, unsigned int width, unsigned int height)
+    -> unsigned int
+{
+  return index2D.x + (height - index2D.y) * width;
+}
 
-#define FLATTERN_INDEX(x, y) ((x) + ((height - (y)) * width))
+} // namespace cuda
 
 #endif // CUDA_PATH_TRACER_2D_INDICES_CUH

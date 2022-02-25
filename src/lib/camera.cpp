@@ -44,3 +44,8 @@ void Camera::reset()
   roll_ = 0;
   speed = default_speed;
 }
+
+auto Camera::generate_gpu_camera() const -> GPUCamera
+{
+  return GPUCamera{.camera_matrix = camera_matrix(), .fov = fov()};
+}

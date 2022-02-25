@@ -1,0 +1,70 @@
+{
+    "camera": {
+        "transform": {
+            "o": [0, 0, 4]
+        },
+        "vfov": 45,
+        "resolution": [640, 480]
+    },
+    "sampler": {
+        "type": "independent",
+        "samples": 100
+    },
+    "background": [
+        1, 1, 1
+    ],
+    "materials": [
+        {
+            "type": "lambertian",
+            "name": "ground",
+            "albedo": [0.8, 0.8, 0.0]
+        }, {
+            "type": "lambertian",
+            "name": "blue",
+            "albedo": [0.1, 0.2, 0.5]
+        }, {
+            "type": "dielectric",
+            "name": "dielectric",
+            "refraction_index": 1.5
+        }, {
+            "type": "metal",
+            "name": "metal",
+            "albedo": [0.8, 0.6, 0.2],
+            "fuzz": 1.0
+        }
+    ],
+    "surfaces": [
+        {
+            "type": "sphere",
+            "transform": {
+                "translate": [0.0, -100.5, -1.0]
+            },
+            "radius": 100.0,
+            "material": "ground"
+        },
+        {
+            "type": "sphere",
+            "transform": {
+                "translate": [0.0, 0.0, -1.0]
+            },
+            "radius": 0.5,
+            "material": "blue"
+        },
+        {
+            "type": "sphere",
+            "transform": {
+                "translate": [-1.0, 0.0, -1.0]
+            },
+            "radius": 0.5,
+            "material": "dielectric"
+        },
+        {
+            "type": "sphere",
+            "transform": {
+                "translate": [1.0, 0.0, -1.0]
+            },
+            "radius": 0.5,
+            "material": "metal"
+        }
+    ]
+}

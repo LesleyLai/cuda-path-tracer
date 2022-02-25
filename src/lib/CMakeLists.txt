@@ -2,8 +2,9 @@ find_package(CUDAToolkit REQUIRED)
 
 find_package(fmt REQUIRED)
 find_package(glm REQUIRED)
-find_package(assimp)
+find_package(assimp REQUIRED)
 find_package(tl-function-ref REQUIRED)
+find_package(jsonformoderncpp REQUIRED)
 
 add_library(cuda_pt_lib
         sphere.hpp
@@ -27,7 +28,7 @@ add_library(cuda_pt_lib
         scene_description.cpp
         denoising/edge_avoiding_a_trous_denoiser.cu
         denoising/edge_avoiding_a_trous_denoiser.hpp
-        ray_gen.cu ray_gen.cuh)
+        ray_gen.cu ray_gen.cuh json.cpp json.hpp scene_parser.cpp scene_parser.hpp constant_memory.cuh)
 add_library(cuda_pt::lib ALIAS cuda_pt_lib)
 
 target_link_libraries(cuda_pt_lib PUBLIC fmt::fmt glm::glm
@@ -35,6 +36,7 @@ target_link_libraries(cuda_pt_lib PUBLIC fmt::fmt glm::glm
         cuda_pt_compiler_options
         tl::function-ref
         assimp::assimp
+        jsonformoderncpp::jsonformoderncpp
         CUDA::cudart)
 target_include_directories(cuda_pt_lib PUBLIC ${PROJECT_SOURCE_DIR}/src)
 set_property(TARGET cuda_pt_lib PROPERTY CUDA_ARCHITECTURES OFF)

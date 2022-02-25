@@ -5,6 +5,7 @@
 #include "window.hpp"
 
 #include <memory>
+#include <span>
 
 class PreviewRenderer;
 
@@ -18,7 +19,7 @@ class App {
   bool hide_control_panel_ = false;
 
 public:
-  App();
+  explicit App(std::span<char*> args);
   ~App();
   App(const App&) = delete;
   auto operator=(const App&) & -> App& = delete;

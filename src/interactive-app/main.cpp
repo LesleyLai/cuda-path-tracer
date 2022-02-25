@@ -1,10 +1,12 @@
 #include "app.hpp"
 
 #include <cstdio>
+#include <span>
 
-auto main() -> int
+auto main(int argc, char** argv) -> int
 try {
-  App app;
+  std::span<char*> args(argv, static_cast<std::size_t>(argc));
+  App app{args};
   app.main_loop();
 } catch (const std::exception& e) {
   std::fputs(e.what(), stderr);
