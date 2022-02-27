@@ -10,6 +10,7 @@ if (MSVC)
             $<$<COMPILE_LANGUAGE:CXX>:
             /W4
             "/permissive-"
+            /wd4201
             /wd4245
             /wd4324 # Disable "structure was padded due to alignment specifier"
             >)

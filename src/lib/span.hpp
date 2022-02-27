@@ -4,15 +4,7 @@
 #include <cassert>
 #include <iterator>
 
-#ifdef __NVCC__
-
-#define HOST_DEVICE __host__ __device__
-
-#else
-
-#define HOST_DEVICE
-
-#endif
+#include "cuda_utils/definitions.hpp"
 
 template <typename T> struct Span {
   using element_type = T;

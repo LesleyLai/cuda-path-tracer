@@ -57,7 +57,7 @@ void read_surfaces(const nlohmann::json& json, SceneDescription& scene)
 
     if (type == "sphere") {
       const auto radius = surface["radius"].get<float>();
-      const auto transform = surface["transform"];
+      const auto transform = surface["mat4"];
       const auto translate = transform["translate"];
       const auto pos = translate.get<glm::vec3>();
 

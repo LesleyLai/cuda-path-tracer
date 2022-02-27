@@ -3,13 +3,15 @@
 
 #include <glm/vec3.hpp>
 
+#include "cuda_utils/definitions.hpp"
+
 struct Ray {
   glm::vec3 origin = {};
   float t_min = {};
   glm::vec3 direction = {};
   float t_max = {};
 
-  [[nodiscard]] __host__ __device__ auto operator()(float t) const -> glm::vec3
+  [[nodiscard]] HOST_DEVICE auto operator()(float t) const -> glm::vec3
   {
     return origin + direction * t;
   }
