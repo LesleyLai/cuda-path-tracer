@@ -28,7 +28,7 @@ add_library(cuda_pt_lib
         scene_description.cpp
         denoising/edge_avoiding_a_trous_denoiser.cu
         denoising/edge_avoiding_a_trous_denoiser.hpp
-        ray_gen.cu ray_gen.cuh json.cpp json.hpp scene_parser.cpp scene_parser.hpp constant_memory.cuh)
+        ray_gen.cu ray_gen.cuh json.cpp json.hpp scene_parser.cpp scene_parser.hpp constant_memory.cuh mesh.cpp)
 add_library(cuda_pt::lib ALIAS cuda_pt_lib)
 
 target_link_libraries(cuda_pt_lib PUBLIC fmt::fmt glm::glm

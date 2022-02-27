@@ -23,8 +23,6 @@ public:
   ~App();
   App(const App&) = delete;
   auto operator=(const App&) & -> App& = delete;
-  App(App&&) noexcept = delete;
-  auto operator=(App&&) & noexcept -> App& = delete;
 
   void main_loop();
 

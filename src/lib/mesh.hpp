@@ -21,4 +21,6 @@ struct GPUMesh {
   std::uint32_t indices_count = 0;
 };
 
+[[nodiscard]] auto load_obj(const char* filename) -> GPUMesh;
+
 #endif // CUDA_PATH_TRACER_MESH_HPP

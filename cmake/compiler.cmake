@@ -10,6 +10,7 @@ if (MSVC)
             $<$<COMPILE_LANGUAGE:CXX>:
             /W4
             "/permissive-"
+            /wd4245
             /wd4324 # Disable "structure was padded due to alignment specifier"
             >)
     if (CUDA_PATH_TRACER_WARNING_AS_ERROR)

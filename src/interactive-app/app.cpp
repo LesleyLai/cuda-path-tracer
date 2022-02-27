@@ -153,6 +153,7 @@ App::App(std::span<char*> args)
   }
 
   SceneDescription scene_desc = read_scene(args[1]);
+  scene_desc.add_object(Mesh{}, "blue");
   path_tracer_.create_buffers(static_cast<unsigned int>(width),
                               static_cast<unsigned int>(height), scene_desc);
 
