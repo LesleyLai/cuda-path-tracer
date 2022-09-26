@@ -7,14 +7,20 @@
 #include "triangle.hpp"
 
 #include "scene.hpp"
+#include "transform.hpp"
 
 #include <map>
 #include <variant>
 #include <vector>
 
+using Shape = std::variant<Sphere, Triangle, Mesh>;
+struct Object {
+  Shape shape;
+  Transform transform;
+};
+
 class SceneDescription {
-  using CPUObject = std::variant<Sphere, Triangle, Mesh>;
-  std::vector<CPUObject> objects_;
+  std::vector<Object> objects_;
   std::map<std::string, Material, std::less<>> material_map_;
   std::vector<std::string> objects_material_mapping_;
 
@@ -24,14 +30,15 @@ public:
     material_map_.insert({name, material});
   }
 
-  void add_object(CPUObject object, const std::string& material_name)
+  void add_object(Shape shape, Transform transform,
+                  const std::string& material_name)
   {
     if (const auto itr = material_map_.find(material_name);
         itr == material_map_.end()) {
       throw std::runtime_error{
           fmt::format("Cannot find material {}", material_name)};
     } else {
-      objects_.push_back(object);
+      objects_.push_back(Object{shape, transform});
       objects_material_mapping_.push_back(material_name);
     }
   }

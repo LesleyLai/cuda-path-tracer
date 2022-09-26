@@ -4,9 +4,9 @@
 
 auto Camera::camera_matrix() const -> glm::mat4
 {
-  constexpr glm::vec3 right(1, 0, 0);
-  constexpr glm::vec3 up(0, 1, 0);
-  constexpr glm::vec3 forward(0, 0, 1);
+  static constexpr glm::vec3 right(1, 0, 0);
+  static constexpr glm::vec3 up(0, 1, 0);
+  static constexpr glm::vec3 forward(0, 0, 1);
 
   return glm::translate(glm::identity<glm::mat4>(), position_) *
          glm::rotate(roll_, forward) * glm::rotate(yaw_, up) *

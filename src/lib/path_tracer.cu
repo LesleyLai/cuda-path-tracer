@@ -7,6 +7,7 @@
 #include "distributions.cuh"
 #include "ray_gen.cuh"
 #include "span.hpp"
+#include "transform.hpp"
 
 #include <cstddef>
 #include <cstdio>
@@ -60,21 +61,35 @@ __device__ auto ray_object_intersection_test(Ray ray, GPUObject obj,
                                              Span<const std::uint32_t> indices,
                                              HitRecord& record) -> bool
 {
+  const auto transformed_ray = inverse_transform_ray(obj.transform, ray);
+  bool hit = false;
   switch (obj.type) {
   case ObjectType::sphere: {
     const auto sphere = aggregate.spheres[obj.index];
-    return ray_sphere_intersection_test(ray, sphere, record);
+    hit = ray_sphere_intersection_test(transformed_ray, sphere, record);
+    break;
   }
   case ObjectType::triangle: {
     const auto triangle = aggregate.triangles[obj.index];
-    return ray_triangle_intersection_test(ray, triangle.pt0, triangle.pt1,
-                                          triangle.pt2, record);
+    hit = ray_triangle_intersection_test(transformed_ray, triangle.pt0,
+                                         triangle.pt1, triangle.pt2, record);
+    break;
   }
   case ObjectType::mesh:
-    return ray_mesh_intersection_test(ray, vertices, indices, record);
+    hit =
+        ray_mesh_intersection_test(transformed_ray, vertices, indices, record);
+    break;
   }
-  // unreachable
-  return false;
+
+  if (hit) {
+    record.point = transform_point(obj.transform, record.point);
+    // record.point = glm::vec3(obj.transform.m() *
+    // glm::vec4(record.point, 1.0));
+    record.t = glm::distance(ray.origin, record.point);
+    record.normal = transform_normal(obj.transform, record.normal);
+  }
+
+  return hit;
 }
 
 __device__ auto ray_scene_intersection_test(Ray ray, AggregateView aggregate,

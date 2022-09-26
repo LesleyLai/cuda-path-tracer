@@ -14,22 +14,28 @@ auto SceneDescription::build() const -> Scene
   std::vector<Triangle> triangles;
 
   for (auto& object : objects_) {
+    ObjectType object_type;
+    std::uint32_t index = 0;
+
     std::visit(overloaded{[&](Sphere sphere) {
-                            gpu_objects.emplace_back(
-                                ObjectType::sphere,
-                                static_cast<std::uint32_t>(spheres.size()));
+                            object_type = ObjectType::sphere;
+                            index = static_cast<std::uint32_t>(spheres.size());
+
                             spheres.push_back(sphere);
                           },
                           [&](Triangle triangle) {
-                            gpu_objects.emplace_back(
-                                ObjectType::triangle,
-                                static_cast<std::uint32_t>(triangles.size()));
+                            object_type = ObjectType::triangle;
+                            index =
+                                static_cast<std::uint32_t>(triangles.size());
                             triangles.push_back(triangle);
                           },
                           [&](const Mesh& /*mesh*/) {
-                            gpu_objects.emplace_back(ObjectType::mesh, 0);
+                            object_type = ObjectType::mesh;
+                            index = 0;
                           }},
-               object);
+               object.shape);
+
+    gpu_objects.emplace_back(object_type, index, object.transform);
   }
 
   Aggregate aggregate;

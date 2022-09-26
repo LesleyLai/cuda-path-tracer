@@ -5,12 +5,16 @@
 #include "mesh.hpp"
 #include "span.hpp"
 #include "sphere.hpp"
+#include "transform.hpp"
 #include "triangle.hpp"
 
 enum class ObjectType : std::uint32_t { sphere, triangle, mesh };
+
 struct GPUObject {
   ObjectType type{};
   std::uint32_t index{};
+
+  Transform transform;
 };
 
 // An aggregate contains object data on the GPU

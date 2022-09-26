@@ -2,6 +2,8 @@
 
 #include <fmt/format.h>
 
+#include <glm/gtc/matrix_transform.hpp>
+
 namespace nlohmann {
 
 template <> struct adl_serializer<glm::vec3> {
@@ -57,11 +59,12 @@ void read_surfaces(const nlohmann::json& json, SceneDescription& scene)
 
     if (type == "sphere") {
       const auto radius = surface["radius"].get<float>();
-      const auto transform = surface["mat4"];
-      const auto translate = transform["translate"];
-      const auto pos = translate.get<glm::vec3>();
+      const auto transform = surface["transform"];
+      const auto translate = transform["translate"].get<glm::vec3>();
 
-      scene.add_object(Sphere{pos, radius}, material);
+      scene.add_object(Sphere{glm::vec3{0}, radius},
+                       Transform{glm::translate(glm::mat4(1), translate)},
+                       material);
 
     } else {
       throw std::runtime_error{

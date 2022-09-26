@@ -21,7 +21,7 @@ enum class DisplayBuffer { path_tracing, color, normal, depth };
 
 class PathTracer {
 public:
-  int max_iterations = 10000;
+  int max_iterations = 1;
 
   bool enable_denoising = false;
 

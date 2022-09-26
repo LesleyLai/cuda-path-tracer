@@ -29,6 +29,20 @@ $ cmake --build .
 
 or alternatively use your IDE's CMake integration.
 
+### Troubleshoot
+
+#### Path-related errors in Windows
+
+nvcc fatal : Cannot find compiler 'cl.exe' in PATH nvcc fatal : Could not set up the environment for Microsoft Visual
+Studio
+
+The way NVCC parse Windows PATH environment variable seems to be brittle. A reliable way is to clear the Path variable
+and only set the location of `cl.exe` to the path. For example:
+
+```
+Path=C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\
+```
+
 ## Run
 
 The executables should be under the `bin` directory of the build directory:

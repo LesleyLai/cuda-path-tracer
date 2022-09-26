@@ -108,7 +108,7 @@ auto EdgeAvoidingATrousDenoiser::denoise(
     denoising_kernel<<<full_blocks_per_grid, threads_per_block>>>(
         color_buffer, normal_buffer, depth_buffer, back_buffer, step_width);
     std::tie(color_buffer, back_buffer, front_buffer) =
-        std::tie(back_buffer, front_buffer, back_buffer);
+        std::make_tuple(back_buffer, front_buffer, back_buffer);
   }
   cuda::check_CUDA_error("Denoising kernel");
 
