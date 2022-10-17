@@ -13,7 +13,7 @@
 
 #include <chrono>
 
-App::App(std::span<char*> args)
+App::App(const Options& options) : path_tracer_{options}
 {
   int gpu_device = 0;
   int device_count = 0;
@@ -149,12 +149,7 @@ App::App(std::span<char*> args)
   const auto [width, height] = window_.resolution();
   preview_ = std::make_unique<PreviewRenderer>(width, height);
 
-  if (args.size() != 2) {
-    fmt::print(stderr, "Usage: {} <filename>", args[0]);
-    std::exit(1);
-  }
-
-  SceneDescription scene_desc = read_scene(args[1]);
+  SceneDescription scene_desc = read_scene(options.filename);
   //  SceneDescription scene_desc;
   //  scene_desc.add_material("ground", DiffuseMateral{glm::vec3(0.5, 0.7,
   //  0.0)}); scene_desc.add_object(
@@ -218,20 +213,20 @@ App::~App()
 
 void App::run_cuda()
 {
-  const auto resolution = window_.resolution();
-  const auto u_width = static_cast<unsigned int>(resolution.width);
-  const auto u_height = static_cast<unsigned int>(resolution.height);
+  const auto resolution = window_.u_resolution();
+  const unsigned int width = resolution.width;
+  const unsigned int height = resolution.height;
 
   using namespace std::chrono_literals;
   using Clock = std::chrono::system_clock;
   const auto start_time = Clock::now();
   do {
-    path_tracer_.path_trace(camera_, u_width, u_height);
+    path_tracer_.path_trace(camera_, width, height);
     CUDA_CHECK(cudaDeviceSynchronize());
   } while (Clock::now() - start_time < 16ms);
 
   preview_->map_pbo([&](uchar4* dev_pbo) {
-    path_tracer_.send_to_preview(dev_pbo, u_width, u_height);
+    path_tracer_.send_to_preview(dev_pbo, width, height);
   });
 }
 

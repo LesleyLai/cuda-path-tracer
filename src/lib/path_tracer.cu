@@ -313,13 +313,13 @@ __global__ void preview_kernel(unsigned int width, unsigned int height,
   if (x <= width && y <= height) {
     pbo[index] =
         uchar4{color_float_to_255(color.x), color_float_to_255(color.y),
-               color_float_to_255(color.z), 1};
+               color_float_to_255(color.z), 255};
   }
 }
 
-PathTracer::PathTracer()
+PathTracer::PathTracer(const Options& options)
 {
-  bunny_ = load_obj("models/bunny.obj");
+  // bunny_ = load_obj("models/bunny.obj");
 }
 
 void PathTracer::path_trace(const Camera& camera, unsigned int width,

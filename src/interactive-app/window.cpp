@@ -46,3 +46,10 @@ auto Window::resolution() const -> Resolution
   glfwGetWindowSize(window_, &res.width, &res.height);
   return res;
 }
+
+[[nodiscard]] auto Window::u_resolution() const -> UResolution
+{
+  const Resolution res = resolution();
+  return UResolution{.width = static_cast<unsigned int>(res.width),
+                     .height = static_cast<unsigned int>(res.height)};
+}

@@ -4,7 +4,8 @@
 #include <filesystem>
 #include <fstream>
 
-[[nodiscard]] auto read_scene(const std::string& filename) -> SceneDescription
+[[nodiscard]] auto read_scene(const std::string_view filename)
+    -> SceneDescription
 {
   const std::filesystem::path path{filename};
   if (path.extension() == ".json") {

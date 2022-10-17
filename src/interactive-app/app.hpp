@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lib/camera.hpp"
+#include "lib/options.hpp"
 #include "lib/path_tracer.hpp"
 #include "window.hpp"
 
@@ -19,7 +20,7 @@ class App {
   bool hide_control_panel_ = false;
 
 public:
-  explicit App(std::span<char*> args);
+  explicit App(const Options& options);
   ~App();
   App(const App&) = delete;
   auto operator=(const App&) & -> App& = delete;

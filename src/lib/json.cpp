@@ -81,6 +81,5 @@ void read_surfaces(const nlohmann::json& json, SceneDescription& scene)
   SceneDescription scene;
   read_materials(json, scene);
   read_surfaces(json, scene);
-
   return scene;
 }

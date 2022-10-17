@@ -1,8 +1,7 @@
 find_package(glfw3 REQUIRED)
 find_package(glad REQUIRED)
 
-add_executable(cuda_pt
-        main.cpp
+add_library(cuda_pt_interactive_app
         shader.hpp
         shader.cpp
         window.cpp
@@ -13,16 +12,10 @@ add_executable(cuda_pt
         preview_renderer.hpp
         gui.cpp
         gui.hpp)
-target_link_libraries(cuda_pt PRIVATE
+add_library(cuda_pt::interactive_app ALIAS cuda_pt_interactive_app)
+
+target_link_libraries(cuda_pt_interactive_app PRIVATE
         cuda_pt::lib
         glfw::glfw
         glad::glad
         third-party::imgui_bindings)
-
-if (CUDA_PATH_TRACER_COPY_ASSETS)
-    add_custom_target(assets
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${PROJECT_SOURCE_DIR}/assets ${CMAKE_BINARY_DIR}/bin
-            )
-    add_dependencies(cuda_pt assets)
-endif ()

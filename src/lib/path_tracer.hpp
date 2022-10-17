@@ -6,6 +6,7 @@
 
 #include "cuda_utils/cuda_buffer.hpp"
 #include "material.hpp"
+#include "options.hpp"
 #include "ray.hpp"
 #include "scene.hpp"
 #include "scene_description.hpp"
@@ -45,7 +46,7 @@ private:
   DisplayBuffer display_buffer_ = DisplayBuffer::path_tracing;
 
 public:
-  PathTracer();
+  explicit PathTracer(const Options& options);
 
   void restart();
 

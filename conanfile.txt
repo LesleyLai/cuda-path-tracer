@@ -8,6 +8,8 @@ tl-function-ref/1.0.0
 imgui/1.84.2
 assimp/5.0.0
 jsonformoderncpp/3.7.0
+stb/cci.20210910
+
 
 [generators]
 cmake_find_package

@@ -10,6 +10,11 @@ struct Resolution {
   int height = 0;
 };
 
+struct UResolution {
+  unsigned int width = 0;
+  unsigned int height = 0;
+};
+
 class Window {
   GLFWwindow* window_ = nullptr;
 
@@ -28,12 +33,10 @@ public:
 
   ~Window();
 
-  [[nodiscard]] auto get() -> GLFWwindow*
-  {
-    return window_;
-  }
+  [[nodiscard]] auto get() -> GLFWwindow* { return window_; }
 
   [[nodiscard]] auto resolution() const -> Resolution;
+  [[nodiscard]] auto u_resolution() const -> UResolution;
 
   void swap_buffers();
 
