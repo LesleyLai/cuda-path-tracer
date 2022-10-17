@@ -105,13 +105,14 @@ void draw_path_tracer_gui(PathTracer& path_tracer, bool& enable_denoising)
   }
 }
 
-void draw_display_gui(PathTracer& path_tracer)
+void draw_display_gui(DisplayBufferType& display_type)
 {
-  constexpr const char* items[] = {"Path Tracing", "Color", "Normal", "Depth"};
-  static int item_current = 0;
-  ImGui::Combo("buffer", &item_current, items, IM_ARRAYSIZE(items));
+  static constexpr const char* items[] = {"Path Tracing", "Color", "Normal",
+                                          "Depth"};
 
-  path_tracer.set_display_type(static_cast<DisplayBuffer>(item_current));
+  int item_current = static_cast<int>(display_type);
+  ImGui::Combo("buffer", &item_current, items, IM_ARRAYSIZE(items));
+  display_type = static_cast<DisplayBufferType>(item_current);
 }
 
 /// @return true if need to restart path tracer
@@ -183,7 +184,7 @@ void App::draw_gui()
 
     if (ImGui::BeginTabItem("Display")) {
       {
-        draw_display_gui(path_tracer_);
+        draw_display_gui(display_type_);
       }
 
       ImGui::EndTabItem();

@@ -21,6 +21,8 @@ class App {
 
   bool enable_denoising_ = false;
 
+  DisplayBufferType display_type_ = DisplayBufferType::path_tracing;
+
 public:
   explicit App(const Options& options);
   ~App();

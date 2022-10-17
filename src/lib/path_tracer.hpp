@@ -16,7 +16,7 @@
 
 class Camera;
 
-enum class DisplayBuffer { path_tracing, color, normal, depth };
+enum class DisplayBufferType { path_tracing, color, normal, depth };
 
 class PathTracer {
 public:
@@ -39,8 +39,6 @@ private:
 
   int iteration_ = 0;
 
-  DisplayBuffer display_buffer_ = DisplayBuffer::path_tracing;
-
 public:
   explicit PathTracer(const Options& options);
 
@@ -53,10 +51,7 @@ public:
   void path_trace(const Camera& camera, UResolution resolution);
   void denoise(UResolution resolution);
 
-  void send_to_preview(uchar4* dev_pbo, UResolution resolution) const;
-
-  void set_display_type(DisplayBuffer display_type)
-  {
-    display_buffer_ = display_type;
-  }
+  void send_to_preview(
+      uchar4* dev_pbo, UResolution resolution,
+      DisplayBufferType type = DisplayBufferType::path_tracing) const;
 };

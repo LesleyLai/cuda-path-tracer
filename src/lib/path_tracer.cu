@@ -363,7 +363,8 @@ void PathTracer::denoise(UResolution resolution)
       dev_denoised_buffer_.data(), dev_denoised_buffer2_.data());
 }
 
-void PathTracer::send_to_preview(uchar4* dev_pbo, UResolution resolution) const
+void PathTracer::send_to_preview(uchar4* dev_pbo, UResolution resolution,
+                                 DisplayBufferType display_type) const
 {
   constexpr unsigned int block_size = 16;
 
@@ -372,23 +373,23 @@ void PathTracer::send_to_preview(uchar4* dev_pbo, UResolution resolution) const
   const auto blocks_y = (resolution.height + block_size - 1) / block_size;
   const dim3 full_blocks_per_grid(blocks_x, blocks_y);
 
-  switch (display_buffer_) {
-  case DisplayBuffer::path_tracing: {
+  switch (display_type) {
+  case DisplayBufferType::path_tracing: {
     preview_kernel<<<full_blocks_per_grid, threads_per_block>>>(
         resolution, BufferNormalizationMethod::none, path_trace_result_buffer_,
         dev_pbo);
   } break;
-  case DisplayBuffer::color:
+  case DisplayBufferType::color:
     preview_kernel<<<full_blocks_per_grid, threads_per_block>>>(
         resolution, BufferNormalizationMethod::none, dev_color_buffer_.data(),
         dev_pbo);
     break;
-  case DisplayBuffer::normal:
+  case DisplayBufferType::normal:
     preview_kernel<<<full_blocks_per_grid, threads_per_block>>>(
         resolution, BufferNormalizationMethod::neg1_1_to_0_1,
         dev_normal_buffer_.data(), dev_pbo);
     break;
-  case DisplayBuffer::depth:
+  case DisplayBufferType::depth:
     preview_depth_kernel<<<full_blocks_per_grid, threads_per_block>>>(
         resolution, dev_depth_buffer_.data(), dev_pbo);
     break;
