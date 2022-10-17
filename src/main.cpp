@@ -19,7 +19,8 @@ void run(const Options& options)
     std::exit(1);
   }
 
-  unsigned int width = 800, height = 800;
+  const unsigned int width = 800, height = 800;
+  const UResolution resolution{.width = width, .height = height};
 
   fmt::print("file {}\n", options.filename);
 
@@ -28,14 +29,13 @@ void run(const Options& options)
   camera.set_position(glm::vec3(10, 10, 0));
 
   PathTracer path_tracer{options};
-  path_tracer.create_buffers(width, height, scene_desc);
-  path_tracer.path_trace(camera, width, height);
-  CUDA_CHECK(cudaDeviceSynchronize());
+  path_tracer.create_buffers(resolution, scene_desc);
+  path_tracer.path_trace(camera, resolution);
 
   uchar4* buffer = nullptr;
   CUDA_CHECK(cudaMallocManaged(reinterpret_cast<void**>(&buffer),
                                width * height * sizeof(uchar4)));
-  path_tracer.send_to_preview(buffer, width, height);
+  path_tracer.send_to_preview(buffer, resolution);
 
   CUDA_CHECK(cudaDeviceSynchronize());
 

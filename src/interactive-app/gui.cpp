@@ -71,10 +71,10 @@ void PopDisabled()
   if ((g.CurrentItemFlags & ImGuiItemFlags_Disabled) == 0) ImGui::PopStyleVar();
 }
 
-void draw_denoiser_options_gui(PathTracer& path_tracer)
+void draw_denoiser_options_gui(PathTracer& path_tracer, bool& enable_denoising)
 {
-  ImGui::Checkbox("Enable", &path_tracer.enable_denoising);
-  if (!path_tracer.enable_denoising) { PushDisabled(); }
+  ImGui::Checkbox("Enable", &enable_denoising);
+  if (!enable_denoising) { PushDisabled(); }
 
   constexpr const char* methods[] = {"Edge-Avoiding À-Trous Wavelet"};
   static int method_current = 0;
@@ -87,10 +87,10 @@ void draw_denoiser_options_gui(PathTracer& path_tracer)
   ImGui::SliderFloat("Normal Weight", &denoiser.normal_weight, 0.0f, 1.0f);
   ImGui::SliderFloat("Position Weight", &denoiser.position_weight, 0.0f, 1.0f);
 
-  if (!path_tracer.enable_denoising) { PopDisabled(); }
+  if (!enable_denoising) { PopDisabled(); }
 }
 
-void draw_path_tracer_gui(PathTracer& path_tracer)
+void draw_path_tracer_gui(PathTracer& path_tracer, bool& enable_denoising)
 {
   ImGui::Text("%d iterations", path_tracer.iteration());
   ImGui::SameLine();
@@ -101,7 +101,7 @@ void draw_path_tracer_gui(PathTracer& path_tracer)
   path_tracer.max_iterations = std::max(1, path_tracer.max_iterations);
 
   if (ImGui::CollapsingHeader("Denoiser")) {
-    draw_denoiser_options_gui(path_tracer);
+    draw_denoiser_options_gui(path_tracer, enable_denoising);
   }
 }
 
@@ -173,7 +173,7 @@ void App::draw_gui()
   if (ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
       ImGui::BeginTabBar("MyTabBar", tab_bar_flags)) {
     if (ImGui::BeginTabItem("Path Tracer")) {
-      draw_path_tracer_gui(path_tracer_);
+      draw_path_tracer_gui(path_tracer_, enable_denoising_);
       ImGui::EndTabItem();
     }
     if (ImGui::BeginTabItem("Camera")) {

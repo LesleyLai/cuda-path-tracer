@@ -266,9 +266,10 @@ __global__ void path_tracing_kernel(glm::vec3* color_buffer,
 
 enum class BufferNormalizationMethod { none, neg1_1_to_0_1 };
 
-__global__ void preview_depth_kernel(unsigned int width, unsigned int height,
+__global__ void preview_depth_kernel(UResolution resolution,
                                      const float* depth_buffer, uchar4* pbo)
 {
+  const auto [width, height] = resolution;
   const auto [x, y] = cuda::calculate_index_2d();
   if (x >= width || y >= height) return;
   const auto index = cuda::flattern_index({x, y}, width, height);
@@ -289,10 +290,11 @@ __global__ void preview_depth_kernel(unsigned int width, unsigned int height,
   }
 }
 
-__global__ void preview_kernel(unsigned int width, unsigned int height,
+__global__ void preview_kernel(UResolution resolution,
                                BufferNormalizationMethod normalization_method,
                                const glm::vec3* buffer, uchar4* pbo)
 {
+  const auto [width, height] = resolution;
   const auto [x, y] = cuda::calculate_index_2d();
   if (x >= width || y >= height) return;
   const auto index = cuda::flattern_index({x, y}, width, height);
@@ -322,9 +324,9 @@ PathTracer::PathTracer(const Options& options)
   // bunny_ = load_obj("models/bunny.obj");
 }
 
-void PathTracer::path_trace(const Camera& camera, unsigned int width,
-                            unsigned int height)
+void PathTracer::path_trace(const Camera& camera, UResolution resolution)
 {
+  const auto [width, height] = resolution;
   constexpr unsigned int block_size = 16;
 
   const dim3 threads_per_block(block_size, block_size);
@@ -351,43 +353,44 @@ void PathTracer::path_trace(const Camera& camera, unsigned int width,
   }
 
   path_trace_result_buffer_ = dev_color_buffer_.data();
-  if (enable_denoising) {
-    path_trace_result_buffer_ = atrous_denoiser.denoise(
-        width, height, dev_color_buffer_.data(), dev_normal_buffer_.data(),
-        dev_depth_buffer_.data(), dev_denoised_buffer_.data(),
-        dev_denoised_buffer2_.data());
-  }
 }
 
-void PathTracer::send_to_preview(uchar4* dev_pbo, unsigned int width,
-                                 unsigned int height) const
+void PathTracer::denoise(UResolution resolution)
+{
+  path_trace_result_buffer_ = atrous_denoiser.denoise(
+      resolution.width, resolution.height, dev_color_buffer_.data(),
+      dev_normal_buffer_.data(), dev_depth_buffer_.data(),
+      dev_denoised_buffer_.data(), dev_denoised_buffer2_.data());
+}
+
+void PathTracer::send_to_preview(uchar4* dev_pbo, UResolution resolution) const
 {
   constexpr unsigned int block_size = 16;
 
   const dim3 threads_per_block(block_size, block_size);
-  const auto blocks_x = (width + block_size - 1) / block_size;
-  const auto blocks_y = (height + block_size - 1) / block_size;
+  const auto blocks_x = (resolution.width + block_size - 1) / block_size;
+  const auto blocks_y = (resolution.height + block_size - 1) / block_size;
   const dim3 full_blocks_per_grid(blocks_x, blocks_y);
 
   switch (display_buffer_) {
   case DisplayBuffer::path_tracing: {
     preview_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-        width, height, BufferNormalizationMethod::none,
-        path_trace_result_buffer_, dev_pbo);
+        resolution, BufferNormalizationMethod::none, path_trace_result_buffer_,
+        dev_pbo);
   } break;
   case DisplayBuffer::color:
     preview_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-        width, height, BufferNormalizationMethod::none,
-        dev_color_buffer_.data(), dev_pbo);
+        resolution, BufferNormalizationMethod::none, dev_color_buffer_.data(),
+        dev_pbo);
     break;
   case DisplayBuffer::normal:
     preview_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-        width, height, BufferNormalizationMethod::neg1_1_to_0_1,
+        resolution, BufferNormalizationMethod::neg1_1_to_0_1,
         dev_normal_buffer_.data(), dev_pbo);
     break;
   case DisplayBuffer::depth:
     preview_depth_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-        width, height, dev_depth_buffer_.data(), dev_pbo);
+        resolution, dev_depth_buffer_.data(), dev_pbo);
     break;
   }
   cuda::check_CUDA_error("Preview kernel");
@@ -399,8 +402,9 @@ void PathTracer::restart()
   iteration_ = 0;
 }
 
-void PathTracer::resize_image(unsigned int width, unsigned int height)
+void PathTracer::resize_image(UResolution resolution)
 {
+  const auto [width, height] = resolution;
   const auto image_size = width * height;
   dev_color_buffer_ = cuda::make_buffer<glm::vec3>(image_size);
   dev_normal_buffer_ = cuda::make_buffer<glm::vec3>(image_size);
@@ -411,9 +415,9 @@ void PathTracer::resize_image(unsigned int width, unsigned int height)
   restart();
 }
 
-void PathTracer::create_buffers(unsigned int width, unsigned int height,
+void PathTracer::create_buffers(UResolution resolution,
                                 const SceneDescription& scene_description)
 {
   dev_scene_ = scene_description.build();
-  resize_image(width, height);
+  resize_image(resolution);
 }

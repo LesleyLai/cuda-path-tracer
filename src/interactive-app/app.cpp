@@ -38,9 +38,10 @@ App::App(const Options& options) : path_tracer_{options}
       window_.get(), [](GLFWwindow* window, int width, int height) {
         auto* app = static_cast<App*>(glfwGetWindowUserPointer(window));
 
-        app->preview_->recreate_image(width, height);
-        app->path_tracer_.resize_image(static_cast<unsigned int>(width),
-                                       static_cast<unsigned int>(height));
+        const Resolution res{width, height};
+
+        app->preview_->recreate_image(res);
+        app->path_tracer_.resize_image(res.to_unsigned());
 
         glViewport(0, 0, width, height);
       });
@@ -146,8 +147,8 @@ App::App(const Options& options) : path_tracer_{options}
     std::exit(1);
   }
 
-  const auto [width, height] = window_.resolution();
-  preview_ = std::make_unique<PreviewRenderer>(width, height);
+  const auto resolution = window_.resolution();
+  preview_ = std::make_unique<PreviewRenderer>(resolution);
 
   SceneDescription scene_desc = read_scene(options.filename);
   //  SceneDescription scene_desc;
@@ -200,8 +201,7 @@ App::App(const Options& options) : path_tracer_{options}
 
   camera_.set_position(glm::vec3(10, 10, 0));
 
-  path_tracer_.create_buffers(static_cast<unsigned int>(width),
-                              static_cast<unsigned int>(height), scene_desc);
+  path_tracer_.create_buffers(resolution.to_unsigned(), scene_desc);
 
   init_imgui(window_.get());
 }
@@ -214,19 +214,20 @@ App::~App()
 void App::run_cuda()
 {
   const auto resolution = window_.u_resolution();
-  const unsigned int width = resolution.width;
-  const unsigned int height = resolution.height;
 
   using namespace std::chrono_literals;
   using Clock = std::chrono::system_clock;
   const auto start_time = Clock::now();
   do {
-    path_tracer_.path_trace(camera_, width, height);
+    path_tracer_.path_trace(camera_, resolution);
+
+    if (enable_denoising_) { path_tracer_.denoise(resolution); }
+
     CUDA_CHECK(cudaDeviceSynchronize());
   } while (Clock::now() - start_time < 16ms);
 
   preview_->map_pbo([&](uchar4* dev_pbo) {
-    path_tracer_.send_to_preview(dev_pbo, width, height);
+    path_tracer_.send_to_preview(dev_pbo, resolution);
   });
 }
 
@@ -235,8 +236,7 @@ void App::main_loop()
   while (!window_.should_close()) {
     window_.poll_events();
     run_cuda();
-    const auto resolution = window_.resolution();
-    preview_->render(resolution.width, resolution.height);
+    preview_->render(window_.resolution());
     draw_gui();
     window_.swap_buffers();
   }

@@ -5,8 +5,10 @@ namespace {
 static constexpr GLuint position_location = 0;
 static constexpr GLuint tex_coords_location = 1;
 
-[[nodiscard]] auto init_texture(int width, int height) -> GLuint
+[[nodiscard]] auto init_texture(Resolution resolution) -> GLuint
 {
+  const auto [width, height] = resolution;
+
   GLuint image = 0;
   glGenTextures(1, &image);
   glBindTexture(GL_TEXTURE_2D, image);
@@ -17,10 +19,12 @@ static constexpr GLuint tex_coords_location = 1;
   return image;
 }
 
-[[nodiscard]] auto create_pbo(int width, int height,
+[[nodiscard]] auto create_pbo(Resolution resolution,
                               cudaGraphicsResource** pbo_cuda_resource)
     -> GLuint
 {
+  const auto [width, height] = resolution;
+
   GLuint pbo = 0;
 
   // set up vertex data parameter
@@ -84,16 +88,16 @@ void init_vao(GLuint& preview_vao)
 
 } // anonymous namespace
 
-void PreviewRenderer::recreate_image(int width, int height)
+void PreviewRenderer::recreate_image(Resolution resolution)
 {
   destroy_pbo(pbo_cuda_resource_, pbo_);
-  pbo_ = create_pbo(width, height, &pbo_cuda_resource_);
+  pbo_ = create_pbo(resolution, &pbo_cuda_resource_);
 
   if (image_) { glDeleteTextures(1, &image_); }
-  image_ = init_texture(width, height);
+  image_ = init_texture(resolution);
 }
 
-PreviewRenderer::PreviewRenderer(int width, int height)
+PreviewRenderer::PreviewRenderer(Resolution resolution)
 {
   program_ = ShaderBuilder{}
                  .load("shaders/pass.vert.glsl", Shader::Type::Vertex)
@@ -102,8 +106,8 @@ PreviewRenderer::PreviewRenderer(int width, int height)
   program_.use();
   glActiveTexture(GL_TEXTURE0);
 
-  pbo_ = create_pbo(width, height, &pbo_cuda_resource_);
-  image_ = init_texture(width, height);
+  pbo_ = create_pbo(resolution, &pbo_cuda_resource_);
+  image_ = init_texture(resolution);
 
   init_vao(preview_vao_);
 }
@@ -113,15 +117,15 @@ PreviewRenderer::~PreviewRenderer()
   destroy_pbo(pbo_cuda_resource_, pbo_);
   if (image_) { glDeleteTextures(1, &image_); }
 }
-void PreviewRenderer::render(int width, int height)
+void PreviewRenderer::render(Resolution resolution)
 {
   program_.use();
   glBindVertexArray(preview_vao_);
 
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_);
   glBindTexture(GL_TEXTURE_2D, image_);
-  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA,
-                  GL_UNSIGNED_BYTE, nullptr);
+  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, resolution.width, resolution.height,
+                  GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
   glClear(GL_COLOR_BUFFER_BIT);
   glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr);
 

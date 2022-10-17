@@ -9,6 +9,7 @@
 #include <tl/function_ref.hpp>
 
 #include "lib/cuda_utils/cuda_check.hpp"
+#include "lib/resolution.hpp"
 #include "shader.hpp"
 
 class PreviewRenderer {
@@ -19,15 +20,15 @@ class PreviewRenderer {
   GLuint image_ = 0;
 
 public:
-  PreviewRenderer(int width, int height);
+  PreviewRenderer(Resolution resolution);
   ~PreviewRenderer();
   PreviewRenderer(const PreviewRenderer&) = delete;
   auto operator=(const PreviewRenderer&) & -> PreviewRenderer& = delete;
   PreviewRenderer(PreviewRenderer&&) noexcept = delete;
   auto operator=(PreviewRenderer&&) & noexcept -> PreviewRenderer& = delete;
 
-  void recreate_image(int width, int height);
-  void render(int width, int height);
+  void recreate_image(Resolution resolution);
+  void render(Resolution resolution);
 
   void map_pbo(tl::function_ref<void(uchar4*)> callback);
 };

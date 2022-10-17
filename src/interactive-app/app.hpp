@@ -19,6 +19,8 @@ class App {
   bool is_right_clicking_ = false;
   bool hide_control_panel_ = false;
 
+  bool enable_denoising_ = false;
+
 public:
   explicit App(const Options& options);
   ~App();

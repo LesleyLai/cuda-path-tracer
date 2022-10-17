@@ -1,19 +1,11 @@
 #ifndef CUDA_OPENGL_BOILERPLATE_WINDOW_HPP
 #define CUDA_OPENGL_BOILERPLATE_WINDOW_HPP
 
+#include "lib/resolution.hpp"
+
 #include <utility>
 
 struct GLFWwindow;
-
-struct Resolution {
-  int width = 0;
-  int height = 0;
-};
-
-struct UResolution {
-  unsigned int width = 0;
-  unsigned int height = 0;
-};
 
 class Window {
   GLFWwindow* window_ = nullptr;
