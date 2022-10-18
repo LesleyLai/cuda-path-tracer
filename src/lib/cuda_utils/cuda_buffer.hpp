@@ -43,6 +43,15 @@ template <typename T>
 }
 
 template <typename T>
+[[nodiscard]] auto make_managed_buffer(std::size_t size) -> Buffer<T>
+{
+  T* ptr = nullptr;
+  CUDA_CHECK(
+      cudaMallocManaged(reinterpret_cast<void**>(&ptr), size * sizeof(T)));
+  return Buffer{ptr};
+}
+
+template <typename T>
 [[nodiscard]] auto create_buffer_from_cpu_data(Span<const T> span)
 {
   auto dev_buffer = cuda::make_buffer<T>(span.size());

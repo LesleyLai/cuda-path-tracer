@@ -1,8 +1,9 @@
 add_subdirectory(lib)
 add_subdirectory(interactive-app)
+add_subdirectory(cli)
 
 add_executable(cuda_pt
-        main.cpp)
+        main.cpp cli/cli.cpp cli/cli.hpp)
 
 target_link_libraries(cuda_pt PUBLIC cuda_pt::lib cuda_pt::interactive_app)
 

@@ -13,7 +13,6 @@ struct GPUCamera {
 class Camera {
   glm::vec3 position_ = glm::vec3(0.0);
 
-private:
   float pitch_ = 0;
   float roll_ = 0;
   float yaw_ = 0;

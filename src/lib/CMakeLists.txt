@@ -49,7 +49,7 @@ add_library(cuda_pt_lib
         cuda_utils/definitions.hpp
         transform.hpp
         options.cpp
-        options.hpp resolution.hpp)
+        options.hpp resolution.hpp third_party_impl.cpp)
 add_library(cuda_pt::lib ALIAS cuda_pt_lib)
 
 target_link_libraries(cuda_pt_lib PUBLIC fmt::fmt glm::glm

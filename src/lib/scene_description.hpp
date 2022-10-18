@@ -27,7 +27,7 @@ class SceneDescription {
 public:
   void add_material(const std::string& name, Material material)
   {
-    material_map_.insert({name, material});
+    material_map_.try_emplace(name, material);
   }
 
   void add_object(Shape shape, Transform transform,
