@@ -23,9 +23,12 @@ void execute_cli_version(const Options& options)
 
   fmt::print("file {}\n", options.filename);
 
-  SceneDescription scene_desc = read_scene(options.filename);
-  Camera camera;
-  camera.set_position(glm::vec3(10, 10, 0));
+  const SceneDescription scene_desc = read_scene(options.filename);
+
+  const Camera camera{
+      .position = glm::vec3(0, 0, 0),
+      .fov = glm::pi<float>() / 2,
+  };
 
   PathTracer path_tracer{options};
   path_tracer.create_buffers(resolution, scene_desc);

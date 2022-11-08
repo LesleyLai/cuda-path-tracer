@@ -14,7 +14,7 @@
 
 #include "denoising/edge_avoiding_a_trous_denoiser.hpp"
 
-class Camera;
+class FirstPersonCameraController;
 
 enum class DisplayBufferType { path_tracing, color, normal, depth };
 

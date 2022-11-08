@@ -3,6 +3,8 @@
 
 #include <imgui.h>
 
+#include <glm/gtc/quaternion.hpp>
+
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include <imgui_internal.h>
@@ -116,44 +118,40 @@ void draw_display_gui(DisplayBufferType& display_type)
 }
 
 /// @return true if need to restart path tracer
-[[nodiscard]] auto draw_camera_gui(Camera& camera) -> bool
+[[nodiscard]] auto
+draw_camera_gui(FirstPersonCameraController& first_person_camera_controller)
+    -> bool
 {
+  ImGui::Text("First person camera");
   ImGui::Text("w/a/s/d: forward/left/backward/right");
   ImGui::Text("r/f: up/down");
   ImGui::Text("mouse right drag: pitch/yaw");
 
   ImGui::NewLine();
   ImGui::Text("Transformation:");
+
   bool pathtracer_restart_required = false;
   if (ImGui::Button("Reset")) {
-    camera.reset();
+    first_person_camera_controller.reset();
     pathtracer_restart_required = true;
   }
 
-  auto position = camera.position();
-  pathtracer_restart_required |= ImGui::InputFloat3("Position", &position[0]);
-  camera.set_position(position);
-
-  if (float rotation[3] = {glm::degrees(camera.pitch()),
-                           glm::degrees(camera.yaw()),
-                           glm::degrees(camera.roll())};
-      ImGui::InputFloat3("Rotation", rotation)) {
-    camera.set_pitch(glm::radians(rotation[0]));
-    camera.set_yaw(glm::radians(rotation[1]));
-    camera.set_roll(glm::radians(rotation[2]));
+  if (glm::vec3 position = first_person_camera_controller.position();
+      ImGui::InputFloat3("Position", &position[0])) {
+    first_person_camera_controller.set_position(position);
     pathtracer_restart_required = true;
   }
 
-  if (float fov_degree = glm::degrees(camera.fov());
+  if (float fov_degree = glm::degrees(first_person_camera_controller.fov());
       ImGui::SliderFloat("Fov", &fov_degree, 10, 170)) {
-    camera.set_fov(glm::radians(fov_degree));
+    first_person_camera_controller.set_fov(glm::radians(fov_degree));
     pathtracer_restart_required = true;
   }
 
   ImGui::NewLine();
   ImGui::Text("Movement:");
-  ImGui::SliderFloat("Speed", &camera.speed, 0.001f, 100, "%.3f",
-                     ImGuiSliderFlags_Logarithmic);
+  ImGui::SliderFloat("Speed", &first_person_camera_controller.speed, 0.001f,
+                     100, "%.3f", ImGuiSliderFlags_Logarithmic);
 
   return pathtracer_restart_required;
 }
@@ -177,8 +175,11 @@ void App::draw_gui()
       draw_path_tracer_gui(path_tracer_, enable_denoising_);
       ImGui::EndTabItem();
     }
+
     if (ImGui::BeginTabItem("Camera")) {
-      if (draw_camera_gui(camera_)) { path_tracer_.restart(); }
+      if (draw_camera_gui(first_person_camera_controller_)) {
+        path_tracer_.restart();
+      }
       ImGui::EndTabItem();
     }
 

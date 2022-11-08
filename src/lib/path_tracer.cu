@@ -319,7 +319,7 @@ __global__ void preview_kernel(UResolution resolution,
   }
 }
 
-PathTracer::PathTracer(const Options& options)
+PathTracer::PathTracer(const Options& /*options*/)
 {
   // bunny_ = load_obj("models/bunny.obj");
 }
@@ -334,9 +334,7 @@ void PathTracer::path_trace(const Camera& camera, UResolution resolution)
   const auto blocks_y = (height + block_size - 1) / block_size;
   const dim3 full_blocks_per_grid(blocks_x, blocks_y);
 
-  auto gpu_camera = camera.generate_gpu_camera();
-  gpu_camera.width = width;
-  gpu_camera.height = height;
+  const auto gpu_camera = camera.to_gpu_camera(resolution);
   cudaMemcpyToSymbol(constant_memory::gpu_camera, &gpu_camera,
                      sizeof(GPUCamera));
 

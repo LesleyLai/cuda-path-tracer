@@ -13,7 +13,8 @@
 
 #include <chrono>
 
-App::App(const Options& options) : path_tracer_{options}
+App::App(const Options& options)
+    : path_tracer_{options}, first_person_camera_controller_{camera_}
 {
   int gpu_device = 0;
   int device_count = 0;
@@ -63,27 +64,33 @@ App::App(const Options& options) : path_tracer_{options}
     case GLFW_REPEAT: {
       switch (key) {
       case GLFW_KEY_W:
-        app->camera_.move(Camera::MoveDirection::forward);
+        app->first_person_camera_controller_.move(
+            FirstPersonCameraController::MoveDirection::forward);
         app->path_tracer_.restart();
         break;
       case GLFW_KEY_A:
-        app->camera_.move(Camera::MoveDirection::left);
+        app->first_person_camera_controller_.move(
+            FirstPersonCameraController::MoveDirection::left);
         app->path_tracer_.restart();
         break;
       case GLFW_KEY_S:
-        app->camera_.move(Camera::MoveDirection::backward);
+        app->first_person_camera_controller_.move(
+            FirstPersonCameraController::MoveDirection::backward);
         app->path_tracer_.restart();
         break;
       case GLFW_KEY_D:
-        app->camera_.move(Camera::MoveDirection::right);
+        app->first_person_camera_controller_.move(
+            FirstPersonCameraController::MoveDirection::right);
         app->path_tracer_.restart();
         break;
       case GLFW_KEY_R:
-        app->camera_.move(Camera::MoveDirection::up);
+        app->first_person_camera_controller_.move(
+            FirstPersonCameraController::MoveDirection::up);
         app->path_tracer_.restart();
         break;
       case GLFW_KEY_F:
-        app->camera_.move(Camera::MoveDirection::down);
+        app->first_person_camera_controller_.move(
+            FirstPersonCameraController::MoveDirection::down);
         app->path_tracer_.restart();
         break;
       default: break;
@@ -108,7 +115,7 @@ App::App(const Options& options) : path_tracer_{options}
   glfwSetCursorPosCallback(
       window_.get(), [](GLFWwindow* window, double x, double y) {
         auto* app_ptr = static_cast<App*>(glfwGetWindowUserPointer(window));
-        auto& camera = app_ptr->camera_;
+        auto& first_person_camera = app_ptr->first_person_camera_controller_;
 
         int width = 0, height = 0;
         glfwGetWindowSize(window, &width, &height);
@@ -122,6 +129,8 @@ App::App(const Options& options) : path_tracer_{options}
           last_x = static_cast<float>(x);
           last_y = static_cast<float>(y);
           first_mouse = false;
+
+          // TODO: update rotation base
         }
 
         // reversed since y-coordinates go from bottom to top
@@ -132,7 +141,8 @@ App::App(const Options& options) : path_tracer_{options}
         last_y = static_cast<float>(y);
 
         if (app_ptr->is_right_clicking_) {
-          camera.mouse_move(glm::radians(x_offset), glm::radians(y_offset));
+          first_person_camera.mouse_move(glm::radians(x_offset),
+                                         glm::radians(y_offset));
           app_ptr->path_tracer_.restart();
         }
       });
@@ -199,7 +209,7 @@ App::App(const Options& options) : path_tracer_{options}
   //    }
   //  }
 
-  camera_.set_position(glm::vec3(10, 10, 0));
+  // first_person_camera_controller_.set_position(glm::vec3(10, 10, 0));
 
   path_tracer_.create_buffers(resolution.to_unsigned(), scene_desc);
 
