@@ -14,7 +14,7 @@
 #include <chrono>
 
 App::App(const Options& options)
-    : path_tracer_{options}, first_person_camera_controller_{camera_}
+    : path_tracer_{}, first_person_camera_controller_{camera_}
 {
   int gpu_device = 0;
   int device_count = 0;
@@ -160,7 +160,7 @@ App::App(const Options& options)
   const auto resolution = window_.resolution();
   preview_ = std::make_unique<PreviewRenderer>(resolution);
 
-  SceneDescription scene_desc = read_scene(options.filename);
+  const SceneDescription scene_desc = read_scene(options);
   //  SceneDescription scene_desc;
   //  scene_desc.add_material("ground", DiffuseMateral{glm::vec3(0.5, 0.7,
   //  0.0)}); scene_desc.add_object(

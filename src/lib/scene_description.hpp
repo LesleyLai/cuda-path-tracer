@@ -1,6 +1,7 @@
 #ifndef CUDA_PATH_TRACER_SCENE_DESCRIPTION_HPP
 #define CUDA_PATH_TRACER_SCENE_DESCRIPTION_HPP
 
+#include "camera.hpp"
 #include "material.hpp"
 #include "mesh.hpp"
 #include "sphere.hpp"
@@ -25,6 +26,10 @@ class SceneDescription {
   std::vector<std::string> objects_material_mapping_;
 
 public:
+  Camera camera;
+  Resolution resolution;
+  int spp;
+
   void add_material(const std::string& name, Material material)
   {
     material_map_.try_emplace(name, material);
@@ -43,7 +48,7 @@ public:
     }
   }
 
-  [[nodiscard]] auto build() const -> Scene;
+  [[nodiscard]] auto build_scene() const -> Scene;
 };
 
 #endif // CUDA_PATH_TRACER_SCENE_DESCRIPTION_HPP

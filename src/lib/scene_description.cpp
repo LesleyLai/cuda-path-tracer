@@ -7,7 +7,7 @@ template <class... Ts> struct overloaded : Ts... {
 };
 template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
-auto SceneDescription::build() const -> Scene
+auto SceneDescription::build_scene() const -> Scene
 {
   std::vector<GPUObject> gpu_objects;
   std::vector<Sphere> spheres;

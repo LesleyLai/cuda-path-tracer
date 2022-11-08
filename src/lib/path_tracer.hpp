@@ -40,7 +40,7 @@ private:
   int iteration_ = 0;
 
 public:
-  explicit PathTracer(const Options& options);
+  PathTracer();
 
   void restart();
 

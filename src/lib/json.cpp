@@ -16,6 +16,16 @@ template <> struct adl_serializer<glm::vec3> {
   }
 };
 
+template <> struct adl_serializer<Resolution> {
+  static void from_json(const json& j, Resolution& res)
+  {
+    if (!j.is_array() || j.size() != 2) {
+      throw std::runtime_error{"resolution need to be 2d"};
+    }
+    res = Resolution{j[0].get<int>(), j[1].get<int>()};
+  }
+};
+
 } // namespace nlohmann
 
 namespace {
@@ -75,11 +85,34 @@ void read_surfaces(const nlohmann::json& json, SceneDescription& scene)
 
 } // anonymous namespace
 
-[[nodiscard]] auto scene_from_json(const nlohmann::json& json)
+[[nodiscard]] auto scene_from_json([[maybe_unused]] const Options& options,
+                                   const nlohmann::json& json)
     -> SceneDescription
 {
-  SceneDescription scene;
-  read_materials(json, scene);
-  read_surfaces(json, scene);
-  return scene;
+  SceneDescription scene_desc;
+  read_materials(json, scene_desc);
+  read_surfaces(json, scene_desc);
+
+  const auto camera = json["camera"];
+  if (!camera.is_object()) {
+    throw std::runtime_error{"camera is not an object!"};
+  }
+
+  if (const auto itr = camera.find("resolution"); itr != camera.end()) {
+    scene_desc.resolution = itr->get<Resolution>();
+  }
+
+  std::optional<int> spp = std::nullopt;
+
+  if (const auto sampler_itr = json.find("sampler");
+      sampler_itr != json.end()) {
+    const auto& sampler = *sampler_itr;
+    if (!sampler.is_object()) {
+      throw std::runtime_error{"Sampler is not an object!"};
+    }
+    spp = sampler["samples"].get<int>();
+  }
+  scene_desc.spp = spp.value_or(1);
+
+  return scene_desc;
 }

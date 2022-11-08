@@ -18,21 +18,30 @@ void execute_cli_version(const Options& options)
     std::exit(1);
   }
 
-  const unsigned int width = 800, height = 800;
-  const UResolution resolution{.width = width, .height = height};
+  const SceneDescription scene_desc = read_scene(options);
+  const UResolution resolution = scene_desc.resolution.to_unsigned();
+  const auto [width, height] = resolution;
 
-  fmt::print("file {}\n", options.filename);
-
-  const SceneDescription scene_desc = read_scene(options.filename);
+  const int spp = scene_desc.spp;
 
   const Camera camera{
       .position = glm::vec3(0, 0, 0),
       .fov = glm::pi<float>() / 2,
   };
 
-  PathTracer path_tracer{options};
+  PathTracer path_tracer{};
   path_tracer.create_buffers(resolution, scene_desc);
-  path_tracer.path_trace(camera, resolution);
+  CUDA_CHECK(cudaDeviceSynchronize());
+
+  fmt::print("Start path tracing\n");
+  fmt::print("spp: {}\n", spp);
+  fmt::print("width: {}, height: {}\n", width, height);
+  std::fflush(stdout);
+
+  for (int i = 0; i < spp; ++i) {
+    path_tracer.path_trace(camera, resolution);
+    CUDA_CHECK(cudaDeviceSynchronize());
+  }
 
   auto buffer = cuda::make_managed_buffer<uchar4>(width * height);
   path_tracer.send_to_preview(buffer.data(), resolution);

@@ -3,9 +3,9 @@
 
 #include <string_view>
 
+#include "options.hpp"
 #include "scene_description.hpp"
 
-[[nodiscard]] auto read_scene(const std::string_view filename)
-    -> SceneDescription;
+[[nodiscard]] auto read_scene(const Options& options) -> SceneDescription;
 
 #endif // CUDA_PATH_TRACER_FILE_PARSER_HPP

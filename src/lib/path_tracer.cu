@@ -319,7 +319,7 @@ __global__ void preview_kernel(UResolution resolution,
   }
 }
 
-PathTracer::PathTracer(const Options& /*options*/)
+PathTracer::PathTracer()
 {
   // bunny_ = load_obj("models/bunny.obj");
 }
@@ -338,17 +338,16 @@ void PathTracer::path_trace(const Camera& camera, UResolution resolution)
   cudaMemcpyToSymbol(constant_memory::gpu_camera, &gpu_camera,
                      sizeof(GPUCamera));
 
-  if (iteration_ < max_iterations) {
-    path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-        dev_color_buffer_.data(), dev_normal_buffer_.data(),
-        dev_depth_buffer_.data(), iteration_,
-        AggregateView{dev_scene_.aggregate}, dev_scene_.materials.data(),
-        bunny_.vertices.data(),
-        Span{bunny_.indices.data(), bunny_.indices_count});
-    cuda::check_CUDA_error("Path Tracing kernel");
+  // if (iteration_ < max_iterations) {
+  path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
+      dev_color_buffer_.data(), dev_normal_buffer_.data(),
+      dev_depth_buffer_.data(), iteration_, AggregateView{dev_scene_.aggregate},
+      dev_scene_.materials.data(), bunny_.vertices.data(),
+      Span{bunny_.indices.data(), bunny_.indices_count});
+  cuda::check_CUDA_error("Path Tracing kernel");
 
-    ++iteration_;
-  }
+  ++iteration_;
+  //}
 
   path_trace_result_buffer_ = dev_color_buffer_.data();
 }
@@ -417,6 +416,6 @@ void PathTracer::resize_image(UResolution resolution)
 void PathTracer::create_buffers(UResolution resolution,
                                 const SceneDescription& scene_description)
 {
-  dev_scene_ = scene_description.build();
+  dev_scene_ = scene_description.build_scene();
   resize_image(resolution);
 }
