@@ -1,5 +1,8 @@
 #include "cli.hpp"
 
+#include <chrono>
+
+#include <fmt/chrono.h>
 #include <fmt/format.h>
 #include <stb_image_write.h>
 
@@ -35,20 +38,23 @@ void execute_cli_version(const CliConfigurations& cli_configs)
   fmt::print("width: {}, height: {}\n", width, height);
   std::fflush(stdout);
 
+  const auto start = std::chrono::system_clock::now();
   path_tracer.max_iterations = spp;
   for (int i = 0; i < spp; ++i) {
     path_tracer.path_trace(camera, resolution);
     CUDA_CHECK(cudaDeviceSynchronize());
   }
+  const auto end = std::chrono::system_clock::now();
 
   auto buffer = cuda::make_managed_buffer<uchar4>(width * height);
   path_tracer.send_to_preview(buffer.data(), resolution);
 
   CUDA_CHECK(cudaDeviceSynchronize());
 
+  fmt::print("Done path tracing {}!\n", cli_configs.filename);
+  fmt::print("Elapsed time: {:%S}s\n", end - start);
+
   if (stbi_write_png("output.png", width, height, 4, buffer.data(), 0) == 0) {
     fmt::print(stderr, "Filed to write to file output.png");
   }
-
-  fmt::print("Done path tracing {}!\n", cli_configs.filename);
 }
