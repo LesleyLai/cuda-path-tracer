@@ -35,6 +35,7 @@ void execute_cli_version(const CliConfigurations& cli_configs)
   fmt::print("width: {}, height: {}\n", width, height);
   std::fflush(stdout);
 
+  path_tracer.max_iterations = spp;
   for (int i = 0; i < spp; ++i) {
     path_tracer.path_trace(camera, resolution);
     CUDA_CHECK(cudaDeviceSynchronize());

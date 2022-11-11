@@ -19,7 +19,8 @@ struct Index2D {
 flattern_index(Index2D index2D, unsigned int width, unsigned int height)
     -> unsigned int
 {
-  return index2D.x + (height - index2D.y) * width;
+  //  return index2D.x + (height - index2D.y) * width;
+  return index2D.x + index2D.y * width;
 }
 
 } // namespace cuda

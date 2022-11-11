@@ -17,7 +17,8 @@
                                  glm::vec3(0, 0, focal_length);
 
   const auto u = x / static_cast<float>(camera.width - 1);
-  const auto v = y / static_cast<float>(camera.height - 1);
+  const auto v = (static_cast<float>(camera.height) - y) /
+                 static_cast<float>(camera.height - 1);
   const auto direction =
       lower_left_corner + u * horizontal + v * vertical - origin;
 
