@@ -1,7 +1,7 @@
 #pragma once
 
 #include "lib/camera.hpp"
-#include "lib/options.hpp"
+#include "lib/configurations.hpp"
 #include "lib/path_tracer.hpp"
 #include "window.hpp"
 
@@ -26,7 +26,7 @@ class App {
   DisplayBufferType display_type_ = DisplayBufferType::path_tracing;
 
 public:
-  explicit App(const Options& options);
+  explicit App(const CliConfigurations& options);
   ~App();
   App(const App&) = delete;
   auto operator=(const App&) & -> App& = delete;

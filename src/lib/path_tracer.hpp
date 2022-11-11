@@ -4,9 +4,9 @@
 
 #include <glm/glm.hpp>
 
+#include "configurations.hpp"
 #include "cuda_utils/cuda_buffer.hpp"
 #include "material.hpp"
-#include "options.hpp"
 #include "ray.hpp"
 #include "resolution.hpp"
 #include "scene.hpp"
@@ -54,4 +54,6 @@ public:
   void send_to_preview(
       uchar4* dev_pbo, UResolution resolution,
       DisplayBufferType type = DisplayBufferType::path_tracing) const;
+
+  [[nodiscard]] auto need_stop() const { return iteration_ > max_iterations; }
 };

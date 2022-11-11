@@ -80,8 +80,7 @@ void read_surfaces(const nlohmann::json& json, SceneDescription& scene)
 
 } // anonymous namespace
 
-[[nodiscard]] auto scene_from_json([[maybe_unused]] const Options& options,
-                                   const nlohmann::json& json)
+[[nodiscard]] auto scene_from_json(const nlohmann::json& json)
     -> SceneDescription
 {
   SceneDescription scene_desc;

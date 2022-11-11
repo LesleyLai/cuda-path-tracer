@@ -6,7 +6,7 @@
 
 auto main(int argc, char** argv) -> int
 try {
-  const Options options = parse_cli_args(argc, argv);
+  const CliConfigurations options = parse_cli_args(argc, argv);
 
   if (options.is_interactive) {
     App app{options};

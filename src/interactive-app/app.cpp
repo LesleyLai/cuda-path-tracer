@@ -13,7 +13,7 @@
 
 #include <chrono>
 
-App::App(const Options& options)
+App::App(const CliConfigurations& options)
     : path_tracer_{}, first_person_camera_controller_{camera_}
 {
   int gpu_device = 0;
@@ -160,8 +160,7 @@ App::App(const Options& options)
   const auto resolution = window_.resolution();
   preview_ = std::make_unique<PreviewRenderer>(resolution);
 
-  const SceneDescription scene_desc = read_scene(options);
-  //  SceneDescription scene_desc;
+  const SceneDescription scene_desc = read_scene(options.filename);
   //  scene_desc.add_material("ground", DiffuseMateral{glm::vec3(0.5, 0.7,
   //  0.0)}); scene_desc.add_object(
   //      Sphere{.center = glm::vec3{}, .radius = 1000},
@@ -211,6 +210,7 @@ App::App(const Options& options)
 
   // first_person_camera_controller_.set_position(glm::vec3(10, 10, 0));
 
+  path_tracer_.max_iterations = options.spp ? *options.spp : scene_desc.spp;
   path_tracer_.create_buffers(resolution.to_unsigned(), scene_desc);
 
   init_imgui(window_.get());
@@ -228,9 +228,9 @@ void App::run_cuda()
   using namespace std::chrono_literals;
   using Clock = std::chrono::system_clock;
   const auto start_time = Clock::now();
+
   do {
     path_tracer_.path_trace(camera_, resolution);
-
     if (enable_denoising_) { path_tracer_.denoise(resolution); }
 
     CUDA_CHECK(cudaDeviceSynchronize());

@@ -1,10 +1,10 @@
-#include "options.hpp"
+#include "configurations.hpp"
 
 #include <fmt/format.h>
 
 #include <cxxopts.hpp>
 
-[[nodiscard]] auto parse_cli_args(int argc, char** argv) -> Options
+[[nodiscard]] auto parse_cli_args(int argc, char** argv) -> CliConfigurations
 try {
   cxxopts::Options options("cuda_pt", "A Path Tracer written in CUDA");
 
@@ -12,7 +12,8 @@ try {
   options.add_options()
   ("filename", "The name of the scene file",cxxopts::value<std::string>())
   ("i,interactive", "Open cuda_pt as an interactive app")
-  ("h,help", "Print this message");
+  ("h,help", "Print this message")
+  ("spp", "Sample per pixel (if provided, this value will overwrite the setting in the scene file", cxxopts::value<int>());
   // clang-format on
 
   options.positional_help("<filename>");
@@ -24,9 +25,14 @@ try {
     exit(0);
   }
 
-  return Options{
+  const auto spp = result.count("spp") == 0
+                       ? std::nullopt
+                       : std::optional<int>{result["spp"].as<int>()};
+
+  return CliConfigurations{
       .is_interactive = result["interactive"].as<bool>(),
       .filename = result["filename"].as<std::string>(),
+      .spp = spp,
   };
 } catch (const cxxopts::OptionException& e) {
   fmt::print("{}\n", e.what());

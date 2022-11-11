@@ -7,7 +7,7 @@
 #include "lib/path_tracer.hpp"
 #include "lib/scene_parser.hpp"
 
-void execute_cli_version(const Options& options)
+void execute_cli_version(const CliConfigurations& cli_configs)
 {
   int gpu_device = 0;
   int device_count = 0;
@@ -18,16 +18,13 @@ void execute_cli_version(const Options& options)
     std::exit(1);
   }
 
-  const SceneDescription scene_desc = read_scene(options);
+  const SceneDescription scene_desc = read_scene(cli_configs.filename);
   const UResolution resolution = scene_desc.resolution.to_unsigned();
   const auto [width, height] = resolution;
 
-  const int spp = scene_desc.spp;
+  const int spp = cli_configs.spp ? *cli_configs.spp : scene_desc.spp;
 
-  const Camera camera{
-      .position = glm::vec3(0, 0, 0),
-      .fov = glm::pi<float>() / 2,
-  };
+  const auto& camera = scene_desc.camera;
 
   PathTracer path_tracer{};
   path_tracer.create_buffers(resolution, scene_desc);
@@ -52,5 +49,5 @@ void execute_cli_version(const Options& options)
     fmt::print(stderr, "Filed to write to file output.png");
   }
 
-  fmt::print("Done path tracing {}!\n", options.filename);
+  fmt::print("Done path tracing {}!\n", cli_configs.filename);
 }

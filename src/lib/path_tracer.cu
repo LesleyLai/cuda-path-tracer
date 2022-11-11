@@ -326,6 +326,8 @@ PathTracer::PathTracer()
 
 void PathTracer::path_trace(const Camera& camera, UResolution resolution)
 {
+  if (iteration_ >= max_iterations) return;
+
   const auto [width, height] = resolution;
   constexpr unsigned int block_size = 16;
 
@@ -338,7 +340,6 @@ void PathTracer::path_trace(const Camera& camera, UResolution resolution)
   cudaMemcpyToSymbol(constant_memory::gpu_camera, &gpu_camera,
                      sizeof(GPUCamera));
 
-  // if (iteration_ < max_iterations) {
   path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
       dev_color_buffer_.data(), dev_normal_buffer_.data(),
       dev_depth_buffer_.data(), iteration_, AggregateView{dev_scene_.aggregate},
@@ -347,7 +348,6 @@ void PathTracer::path_trace(const Camera& camera, UResolution resolution)
   cuda::check_CUDA_error("Path Tracing kernel");
 
   ++iteration_;
-  //}
 
   path_trace_result_buffer_ = dev_color_buffer_.data();
 }
