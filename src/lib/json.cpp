@@ -4,14 +4,14 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "prelude.hpp"
+
 namespace nlohmann {
 
 template <> struct adl_serializer<glm::vec3> {
   static void from_json(const json& j, glm::vec3& v)
   {
-    if (!j.is_array() || j.size() != 3) {
-      throw std::runtime_error{"vec3 need to be 3d"};
-    }
+    if (!j.is_array() || j.size() != 3) { panic("vec3 need to be 3d"); }
     v = glm::vec3{j[0].get<float>(), j[1].get<float>(), j[2].get<float>()};
   }
 };
@@ -19,9 +19,7 @@ template <> struct adl_serializer<glm::vec3> {
 template <> struct adl_serializer<Resolution> {
   static void from_json(const json& j, Resolution& res)
   {
-    if (!j.is_array() || j.size() != 2) {
-      throw std::runtime_error{"resolution need to be 2d"};
-    }
+    if (!j.is_array() || j.size() != 2) { panic("resolution need to be 2d"); }
     res = Resolution{j[0].get<int>(), j[1].get<int>()};
   }
 };
@@ -33,9 +31,7 @@ namespace {
 void read_materials(const nlohmann::json& json, SceneDescription& scene)
 {
   const auto materials = json["materials"];
-  if (!materials.is_array()) {
-    throw std::runtime_error{"materials is not array"};
-  }
+  if (!materials.is_array()) { panic("materials is not array!"); }
   for (const auto& material : materials) {
     const auto name = material["name"].get<std::string>();
     const auto type = material["type"].get<std::string>();
@@ -50,8 +46,7 @@ void read_materials(const nlohmann::json& json, SceneDescription& scene)
       const auto fuzz = material["fuzz"].get<float>();
       scene.add_material(name, MetalMaterial{albedo, fuzz});
     } else {
-      throw std::runtime_error{
-          fmt::format("Unsupported material type {}", type)};
+      panic(fmt::format("Unsupported material type {}", type));
     }
   }
 }
@@ -107,9 +102,7 @@ void read_surfaces(const nlohmann::json& json, SceneDescription& scene)
   if (const auto sampler_itr = json.find("sampler");
       sampler_itr != json.end()) {
     const auto& sampler = *sampler_itr;
-    if (!sampler.is_object()) {
-      throw std::runtime_error{"Sampler is not an object!"};
-    }
+    if (!sampler.is_object()) { panic("Sampler is not an object!"); }
     spp = sampler["samples"].get<int>();
   }
   scene_desc.spp = spp.value_or(1);
