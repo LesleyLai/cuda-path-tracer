@@ -10,7 +10,7 @@
 #include "lib/path_tracer.hpp"
 #include "lib/scene_parser.hpp"
 
-void execute_cli_version(const CliConfigurations& cli_configs)
+void execute_cli_version(const SceneDescription& scene_desc)
 {
   int gpu_device = 0;
   int device_count = 0;
@@ -21,12 +21,10 @@ void execute_cli_version(const CliConfigurations& cli_configs)
     std::exit(1);
   }
 
-  const SceneDescription scene_desc = read_scene(cli_configs.filename);
   const UResolution resolution = scene_desc.resolution.to_unsigned();
   const auto [width, height] = resolution;
 
-  const int spp = cli_configs.spp ? *cli_configs.spp : scene_desc.spp;
-
+  const int spp = scene_desc.spp;
   const auto& camera = scene_desc.camera;
 
   PathTracer path_tracer{};
@@ -51,7 +49,7 @@ void execute_cli_version(const CliConfigurations& cli_configs)
 
   CUDA_CHECK(cudaDeviceSynchronize());
 
-  fmt::print("Done path tracing {}!\n", cli_configs.filename);
+  fmt::print("Done path tracing {}!\n", scene_desc.filename);
   fmt::print("Elapsed time: {:%S}s\n", end - start);
 
   if (stbi_write_png("output.png", width, height, 4, buffer.data(), 0) == 0) {

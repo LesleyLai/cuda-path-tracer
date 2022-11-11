@@ -26,7 +26,7 @@ class App {
   DisplayBufferType display_type_ = DisplayBufferType::path_tracing;
 
 public:
-  explicit App(const CliConfigurations& options);
+  explicit App(const SceneDescription& scene_desc);
   ~App();
   App(const App&) = delete;
   auto operator=(const App&) & -> App& = delete;

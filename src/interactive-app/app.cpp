@@ -13,8 +13,8 @@
 
 #include <chrono>
 
-App::App(const CliConfigurations& options)
-    : path_tracer_{}, first_person_camera_controller_{camera_}
+App::App(const SceneDescription& scene_desc)
+    : first_person_camera_controller_{camera_}
 {
   int gpu_device = 0;
   int device_count = 0;
@@ -40,7 +40,6 @@ App::App(const CliConfigurations& options)
         auto* app = static_cast<App*>(glfwGetWindowUserPointer(window));
 
         const Resolution res{width, height};
-
         app->preview_->recreate_image(res);
         app->path_tracer_.resize_image(res.to_unsigned());
 
@@ -160,57 +159,7 @@ App::App(const CliConfigurations& options)
   const auto resolution = window_.resolution();
   preview_ = std::make_unique<PreviewRenderer>(resolution);
 
-  const SceneDescription scene_desc = read_scene(options.filename);
-  //  scene_desc.add_material("ground", DiffuseMateral{glm::vec3(0.5, 0.7,
-  //  0.0)}); scene_desc.add_object(
-  //      Sphere{.center = glm::vec3{}, .radius = 1000},
-  //      Transform{glm::translate(glm::mat4{1.0}, glm::vec3(0, -1004, 0))},
-  //      "ground");
-  //
-  //  static constexpr float radius = 0.5f;
-  //  static constexpr int num_s = 40;
-  //  static constexpr int num_t = 40;
-
-  /*
-  (define radius 0.5)
-  (define s-count 40)
-  (define t-count 40)
-  (iter (cartesian-product (range 0 s-count) (range 0 t-count))
-    (lambda (is it)
-      (let [(s (/ (+ is 0.5) s-count))
-            (t (/ (+ it 0.5) t-count))
-            (u (- (* s 8) 4))
-            (v (* t 6.25))]
-    ))
-
-  */
-
-  //  for (int is = 0; is < num_s; ++is) {
-  //    for (int it = 0; it < num_t; ++it) {
-  //      const float s = (is + 0.5f) / num_s;
-  //      const float t = (it + 0.5f) / num_t;
-  //      const float u = s * 8 - 4.0f;
-  //      const float v = t * 6.25f;
-  //      glm::vec3 center(-u * cos(v), v * cos(u) * 0.75f, u * sin(v));
-  //      glm::vec3 kd = 0.3f * glm::mix(glm::mix(glm::vec3(0.9f, 0.0f, 0.0f),
-  //                                              glm::vec3(0.0f, 0.9f, 0.0f),
-  //                                              t),
-  //                                     glm::mix(glm::vec3(0.0f, 0.0f, 0.9f),
-  //                                              glm::vec3(0.0f, 0.0f, 0.0f),
-  //                                              t),
-  //                                     s);
-  //
-  //      const std::string material_name = fmt::format("{}-{}", is, it);
-  //      scene_desc.add_material(material_name, DiffuseMateral{kd});
-  //      scene_desc.add_object(Sphere{.center = glm::vec3{}, .radius = radius},
-  //                            Transform{glm::translate(glm::mat4{1.0},
-  //                            center)}, material_name);
-  //    }
-  //  }
-
-  // first_person_camera_controller_.set_position(glm::vec3(10, 10, 0));
-
-  path_tracer_.max_iterations = options.spp ? *options.spp : scene_desc.spp;
+  path_tracer_.max_iterations = scene_desc.spp;
   path_tracer_.create_buffers(resolution.to_unsigned(), scene_desc);
 
   init_imgui(window_.get());

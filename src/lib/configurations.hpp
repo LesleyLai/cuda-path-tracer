@@ -4,6 +4,9 @@
 #include <optional>
 #include <string>
 
+/**
+ * @brief Configurations get from command line
+ */
 struct CliConfigurations {
   bool is_interactive = false;
   std::string filename;

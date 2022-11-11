@@ -26,6 +26,7 @@ class SceneDescription {
   std::vector<std::string> objects_material_mapping_;
 
 public:
+  std::string filename;
   Camera camera;
   Resolution resolution;
   int spp;
