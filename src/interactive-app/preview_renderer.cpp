@@ -99,10 +99,12 @@ void PreviewRenderer::recreate_image(Resolution resolution)
 
 PreviewRenderer::PreviewRenderer(Resolution resolution)
 {
-  program_ = ShaderBuilder{}
-                 .load("shaders/pass.vert.glsl", Shader::Type::Vertex)
-                 .load("shaders/pass.frag.glsl", Shader::Type::Fragment)
-                 .build();
+  // TODO: pass assets directory down
+  program_ =
+      ShaderBuilder{}
+          .load("../../assets/shaders/pass.vert.glsl", Shader::Type::Vertex)
+          .load("../../assets/shaders/pass.frag.glsl", Shader::Type::Fragment)
+          .build();
   program_.use();
   glActiveTexture(GL_TEXTURE0);
 

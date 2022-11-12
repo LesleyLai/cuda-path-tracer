@@ -186,7 +186,7 @@ void App::run_cuda()
   } while (Clock::now() - start_time < 16ms);
 
   preview_->map_pbo([&](uchar4* dev_pbo) {
-    path_tracer_.send_to_preview(dev_pbo, resolution);
+    path_tracer_.send_to_preview(dev_pbo, resolution, display_type_);
   });
 }
 

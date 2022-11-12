@@ -23,7 +23,7 @@ class App {
 
   bool enable_denoising_ = false;
 
-  DisplayBufferType display_type_ = DisplayBufferType::path_tracing;
+  DisplayBufferType display_type_ = DisplayBufferType::final;
 
 public:
   explicit App(const SceneDescription& scene_desc);

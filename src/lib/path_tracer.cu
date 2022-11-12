@@ -319,10 +319,7 @@ __global__ void preview_kernel(UResolution resolution,
   }
 }
 
-PathTracer::PathTracer()
-{
-  // bunny_ = load_obj("models/bunny.obj");
-}
+PathTracer::PathTracer() = default;
 
 void PathTracer::path_trace(const Camera& camera, UResolution resolution)
 {
@@ -371,7 +368,7 @@ void PathTracer::send_to_preview(uchar4* dev_pbo, UResolution resolution,
   const dim3 full_blocks_per_grid(blocks_x, blocks_y);
 
   switch (display_type) {
-  case DisplayBufferType::path_tracing: {
+  case DisplayBufferType::final: {
     preview_kernel<<<full_blocks_per_grid, threads_per_block>>>(
         resolution, BufferNormalizationMethod::none, path_trace_result_buffer_,
         dev_pbo);
@@ -417,5 +414,7 @@ void PathTracer::create_buffers(UResolution resolution,
                                 const SceneDescription& scene_description)
 {
   dev_scene_ = scene_description.build_scene();
+  // TODO: pass assets directory down
+  bunny_ = load_obj("../../assets/models/bunny.obj");
   resize_image(resolution);
 }

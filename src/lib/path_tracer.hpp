@@ -16,7 +16,7 @@
 
 class FirstPersonCameraController;
 
-enum class DisplayBufferType { path_tracing, color, normal, depth };
+enum class DisplayBufferType { final, color, normal, depth };
 
 class PathTracer {
 public:
@@ -51,9 +51,6 @@ public:
   void path_trace(const Camera& camera, UResolution resolution);
   void denoise(UResolution resolution);
 
-  void send_to_preview(
-      uchar4* dev_pbo, UResolution resolution,
-      DisplayBufferType type = DisplayBufferType::path_tracing) const;
-
-  [[nodiscard]] auto need_stop() const { return iteration_ > max_iterations; }
+  void send_to_preview(uchar4* dev_pbo, UResolution resolution,
+                       DisplayBufferType type = DisplayBufferType::final) const;
 };
