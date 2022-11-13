@@ -1,0 +1,50 @@
+{
+  "camera": {
+    "transform": {
+      "o": [
+        0,
+        0,
+        4
+      ]
+    },
+    "vfov": 45,
+    "resolution": [
+      1920,
+      1080
+    ]
+  },
+  "sampler": {
+    "type": "independent",
+    "samples": 200
+  },
+  "background": [
+    1,
+    1,
+    1
+  ],
+  "materials": [
+    {
+      "type": "lambertian",
+      "name": "ground",
+      "albedo": [
+        0.8,
+        0.8,
+        0.8
+      ]
+    }
+  ],
+  "surfaces": [
+    {
+      "type": "sphere",
+      "transform": {
+        "translate": [
+          0.0,
+          -100.5,
+          -1.0
+        ]
+      },
+      "radius": 100.0,
+      "material": "ground"
+    }
+  ]
+}

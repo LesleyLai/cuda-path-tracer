@@ -23,7 +23,7 @@
     const aiVector3D v = mesh->mVertices[i];
     // const aiVector3D n = mesh->mNormals[i];
     // const aiVector3D t = mesh->mTextureCoords[0][i];
-    vertices.push_back(Vertex{{v.x + 3.f, v.z, v.y}});
+    vertices.push_back(Vertex{{v.x, v.y, v.z}});
   }
 
   thrust::host_vector<std::uint32_t> indices;

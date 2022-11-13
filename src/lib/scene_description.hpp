@@ -14,7 +14,7 @@
 #include <variant>
 #include <vector>
 
-using Shape = std::variant<Sphere, Triangle, Mesh>;
+using Shape = std::variant<Sphere, Mesh>;
 struct Object {
   Shape shape;
   Transform transform;

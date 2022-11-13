@@ -69,12 +69,6 @@ __device__ auto ray_object_intersection_test(Ray ray, GPUObject obj,
     hit = ray_sphere_intersection_test(transformed_ray, sphere, record);
     break;
   }
-  case ObjectType::triangle: {
-    const auto triangle = aggregate.triangles[obj.index];
-    hit = ray_triangle_intersection_test(transformed_ray, triangle.pt0,
-                                         triangle.pt1, triangle.pt2, record);
-    break;
-  }
   case ObjectType::mesh:
     hit =
         ray_mesh_intersection_test(transformed_ray, vertices, indices, record);
@@ -83,8 +77,6 @@ __device__ auto ray_object_intersection_test(Ray ray, GPUObject obj,
 
   if (hit) {
     record.point = transform_point(obj.transform, record.point);
-    // record.point = glm::vec3(obj.transform.m() *
-    // glm::vec4(record.point, 1.0));
     record.t = glm::distance(ray.origin, record.point);
     record.normal = transform_normal(obj.transform, record.normal);
   }

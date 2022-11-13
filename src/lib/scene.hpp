@@ -8,7 +8,7 @@
 #include "transform.hpp"
 #include "triangle.hpp"
 
-enum class ObjectType : std::uint32_t { sphere, triangle, mesh };
+enum class ObjectType : std::uint32_t { sphere, mesh };
 
 struct GPUObject {
   ObjectType type{};
@@ -25,23 +25,18 @@ struct Aggregate {
 
   std::size_t sphere_count = 0;
   cuda::Buffer<Sphere> spheres{};
-
-  std::size_t triangle_count = 0;
-  cuda::Buffer<Triangle> triangles{};
 };
 
 struct AggregateView {
   Span<const GPUObject> objects;
   const std::uint32_t* object_material_indices = nullptr;
   Span<const Sphere> spheres;
-  Span<const Triangle> triangles;
 
   AggregateView() = default;
   explicit AggregateView(const Aggregate& aggregate)
       : objects{aggregate.objects.data(), aggregate.object_count},
         object_material_indices{aggregate.object_material_indices.data()},
-        spheres{aggregate.spheres.data(), aggregate.sphere_count},
-        triangles{aggregate.triangles.data(), aggregate.triangle_count}
+        spheres{aggregate.spheres.data(), aggregate.sphere_count}
   {
   }
 };

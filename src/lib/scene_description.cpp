@@ -23,12 +23,6 @@ auto SceneDescription::build_scene() const -> Scene
 
                             spheres.push_back(sphere);
                           },
-                          [&](Triangle triangle) {
-                            object_type = ObjectType::triangle;
-                            index =
-                                static_cast<std::uint32_t>(triangles.size());
-                            triangles.push_back(triangle);
-                          },
                           [&](const Mesh& /*mesh*/) {
                             object_type = ObjectType::mesh;
                             index = 0;
@@ -75,10 +69,6 @@ auto SceneDescription::build_scene() const -> Scene
   auto sphere_span = Span<const Sphere>{spheres.data(), spheres.size()};
   aggregate.spheres = cuda::create_buffer_from_cpu_data(sphere_span);
   aggregate.sphere_count = std::size(spheres);
-
-  auto triangle_span = Span<const Triangle>{triangles.data(), triangles.size()};
-  aggregate.triangles = cuda::create_buffer_from_cpu_data(triangle_span);
-  aggregate.triangle_count = std::size(triangles);
 
   cuda::Buffer<Material> materials = cuda::create_buffer_from_cpu_data(
       Span(materials_vec.data(), materials_vec.size()));

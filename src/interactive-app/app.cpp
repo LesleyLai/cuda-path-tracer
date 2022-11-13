@@ -128,8 +128,6 @@ App::App(const SceneDescription& scene_desc)
           last_x = static_cast<float>(x);
           last_y = static_cast<float>(y);
           first_mouse = false;
-
-          // TODO: update rotation base
         }
 
         // reversed since y-coordinates go from bottom to top
