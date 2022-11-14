@@ -6,15 +6,15 @@
 #include "triangle.hpp"
 
 [[nodiscard]] __host__ __device__ auto inline ray_sphere_intersection_test(
-    Ray r, Sphere sphere, HitRecord& record) -> bool
+    Ray transformed_r, Sphere sphere, HitRecord& record) -> bool
 {
   const auto center = sphere.center;
   const auto radius = sphere.radius;
 
-  const auto oc = r.origin - center;
+  const auto oc = transformed_r.origin - center;
 
-  const auto a = dot(r.direction, r.direction);
-  const auto b = 2 * dot(r.direction, oc);
+  const auto a = dot(transformed_r.direction, transformed_r.direction);
+  const auto b = 2 * dot(transformed_r.direction, oc);
   const auto c = dot(oc, oc) - radius * radius;
   const auto discrimination = b * b - 4 * a * c;
 
@@ -26,18 +26,23 @@
 
   auto hit_record_from_t = [&](float t) {
     record.t = t;
-    record.point = r(t);
+    record.point = transformed_r(t);
     const auto outward_normal = (record.point - center) / radius;
-    record.side = dot(r.direction, outward_normal) < 0 ? HitFaceSide::front
-                                                       : HitFaceSide::back;
+    record.side = dot(transformed_r.direction, outward_normal) < 0
+                      ? HitFaceSide::front
+                      : HitFaceSide::back;
     record.normal =
         record.side == HitFaceSide::front ? outward_normal : -outward_normal;
     return true;
   };
 
   // Get the smaller non-negative value of t1, t2
-  if (t1 >= r.t_min && t1 <= r.t_max) { return hit_record_from_t(t1); }
-  if (t2 >= r.t_min && t2 <= r.t_max) { return hit_record_from_t(t2); }
+  if (t1 >= transformed_r.t_min && t1 <= transformed_r.t_max) {
+    return hit_record_from_t(t1);
+  }
+  if (t2 >= transformed_r.t_min && t2 <= transformed_r.t_max) {
+    return hit_record_from_t(t2);
+  }
   return false;
 }
 
@@ -48,11 +53,12 @@ triangle_normal(glm::vec3 pt0, glm::vec3 pt1, glm::vec3 pt2)
 }
 
 [[nodiscard]] __host__ __device__ inline auto
-ray_triangle_intersection_test(Ray r, glm::vec3 pt0, glm::vec3 pt1,
+ray_triangle_intersection_test(Ray ray, glm::vec3 pt0, glm::vec3 pt1,
                                glm::vec3 pt2, HitRecord& record) -> bool
 {
-  const auto ve = r.origin;
-  const auto vd = r.direction;
+
+  const auto ve = ray.origin;
+  const auto vd = ray.direction;
   const float a = pt0.x - pt1.x;
   const float b = pt0.y - pt1.y;
   const float c = pt0.z - pt1.z;
@@ -77,7 +83,7 @@ ray_triangle_intersection_test(Ray r, glm::vec3 pt0, glm::vec3 pt1,
 
   // compute t
   const float t = -(f * ak_jb + e * jc_al + d * bl_kc) / M;
-  if ((t < r.t_min) || (t > r.t_max)) return false;
+  if ((t < ray.t_min) || (t > ray.t_max)) return false;
 
   // compute gamma
   const float gamma = (i * ak_jb + h * jc_al + g * bl_kc) / M;
@@ -88,10 +94,10 @@ ray_triangle_intersection_test(Ray r, glm::vec3 pt0, glm::vec3 pt1,
   if ((beta < 0) || (beta > (1 - gamma))) return false;
 
   record.t = t;
-  record.point = r(t);
+  record.point = ray(t);
   const auto outward_normal = triangle_normal(pt0, pt1, pt2);
-  record.side = dot(r.direction, outward_normal) < 0 ? HitFaceSide::front
-                                                     : HitFaceSide::back;
+  record.side = dot(ray.direction, outward_normal) < 0 ? HitFaceSide::front
+                                                       : HitFaceSide::back;
   record.normal =
       record.side == HitFaceSide::front ? outward_normal : -outward_normal;
   record.material_id = 1;

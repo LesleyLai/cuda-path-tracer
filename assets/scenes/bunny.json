@@ -3,7 +3,7 @@
     "transform": {
       "o": [0, 0, 4]
     },
-    "vfov": 45,
+    "vfov": 60,
     "resolution": [1920, 1080]
   },
   "sampler": {

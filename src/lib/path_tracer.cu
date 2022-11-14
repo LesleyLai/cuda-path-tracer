@@ -35,6 +35,7 @@ __device__ auto get_background_color(Ray r) -> glm::vec3
 
 __device__ auto ray_mesh_intersection_test(Ray ray, const Vertex* vertices,
                                            Span<const std::uint32_t> indices,
+                                           const Transform& transform,
                                            HitRecord& record) -> bool
 {
   bool hit = false;
@@ -43,9 +44,9 @@ __device__ auto ray_mesh_intersection_test(Ray ray, const Vertex* vertices,
     const auto index1 = indices[j + 1];
     const auto index2 = indices[j + 2];
 
-    const auto p0 = vertices[index0].position;
-    const auto p1 = vertices[index1].position;
-    const auto p2 = vertices[index2].position;
+    const auto p0 = transform_point(transform, vertices[index0].position);
+    const auto p1 = transform_point(transform, vertices[index1].position);
+    const auto p2 = transform_point(transform, vertices[index2].position);
 
     if (ray_triangle_intersection_test(ray, p0, p1, p2, record)) {
       hit = true;
@@ -61,24 +62,25 @@ __device__ auto ray_object_intersection_test(Ray ray, GPUObject obj,
                                              Span<const std::uint32_t> indices,
                                              HitRecord& record) -> bool
 {
-  const auto transformed_ray = inverse_transform_ray(obj.transform, ray);
   bool hit = false;
   switch (obj.type) {
   case ObjectType::sphere: {
+    const auto transformed_ray = inverse_transform_ray(obj.transform, ray);
     const auto sphere = aggregate.spheres[obj.index];
     hit = ray_sphere_intersection_test(transformed_ray, sphere, record);
+
+    if (hit) {
+      record.point = transform_point(obj.transform, record.point);
+      record.t = glm::distance(ray.origin, record.point);
+      record.normal = transform_normal(obj.transform, record.normal);
+    }
+
     break;
   }
   case ObjectType::mesh:
-    hit =
-        ray_mesh_intersection_test(transformed_ray, vertices, indices, record);
+    hit = ray_mesh_intersection_test(ray, vertices, indices, obj.transform,
+                                     record);
     break;
-  }
-
-  if (hit) {
-    record.point = transform_point(obj.transform, record.point);
-    record.t = glm::distance(ray.origin, record.point);
-    record.normal = transform_normal(obj.transform, record.normal);
   }
 
   return hit;
