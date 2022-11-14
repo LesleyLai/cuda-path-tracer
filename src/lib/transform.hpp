@@ -27,19 +27,24 @@ public:
   {
     return inverse_m_;
   }
+
+  [[nodiscard]] HOST_DEVICE auto inverse() const -> Transform
+  {
+    return Transform{inverse_m_, m_};
+  }
 };
 
 [[nodiscard]] HOST_DEVICE inline auto
 transform_point(const Transform& transform, const glm::vec3& point) -> glm::vec3
 {
   const auto v = transform.m() * glm::vec4(point, 1.0);
-  return glm::vec3(v / v.w);
+  return glm::vec3{v} / v.w;
 }
 
 [[nodiscard]] HOST_DEVICE inline auto
 inverse_transform_ray(const Transform& transform, const Ray& ray) -> Ray
 {
-  const glm::vec3 origin = ray.origin + glm::vec3(transform.inverse_m()[3]);
+  const glm::vec3 origin = transform_point(transform.inverse(), ray.origin);
   const glm::vec3 direction{transform.inverse_m() *
                             glm::vec4(ray.direction, 0.)};
   return Ray{origin, ray.t_min, glm::normalize(direction), ray.t_max};
@@ -49,16 +54,8 @@ inverse_transform_ray(const Transform& transform, const Ray& ray) -> Ray
 transform_normal(const Transform& transform, const glm::vec3& normal)
     -> glm::vec3
 {
-  const float x = normal.x;
-  const float y = normal.y;
-  const float z = normal.z;
-  return glm::vec3{
-      transform.inverse_m()[0][0] * x + transform.inverse_m()[1][0] * y +
-          transform.inverse_m()[2][0] * z,
-      transform.inverse_m()[0][1] * x + transform.inverse_m()[1][1] * y +
-          transform.inverse_m()[2][1] * z,
-      transform.inverse_m()[0][2] * x + transform.inverse_m()[1][2] * y +
-          transform.inverse_m()[2][2] * z};
+  return glm::vec3{glm::transpose(transform.inverse_m()) *
+                   glm::vec4(normal, 0.f)};
 }
 
 #endif // CUDA_PATH_TRACER_TRANSFORM_HPP

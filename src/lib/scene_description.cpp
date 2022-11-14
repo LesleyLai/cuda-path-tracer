@@ -11,7 +11,6 @@ auto SceneDescription::build_scene() const -> Scene
 {
   std::vector<GPUObject> gpu_objects;
   std::vector<Sphere> spheres;
-  std::vector<Triangle> triangles;
 
   for (auto& object : objects_) {
     ObjectType object_type;
