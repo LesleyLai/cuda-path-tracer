@@ -65,6 +65,7 @@ target_compile_options(
         cuda_pt_compiler_options INTERFACE
         $<$<COMPILE_LANGUAGE:CUDA>:
         --expt-relaxed-constexpr
+        --generate-line-info # For source information
         >
 )
 
