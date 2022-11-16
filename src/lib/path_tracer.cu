@@ -186,21 +186,17 @@ __device__ void evaluate_material(Ray& ray, const HitRecord record,
   return color;
 }
 
-__global__ void path_tracing_kernel(unsigned int paths_count, Ray* rays,
-                                    int* pixel_indices, glm::vec3* color_buffer,
-                                    glm::vec3* normal_buffer,
-                                    float* depth_buffer, std::size_t iteration,
+__global__ void path_tracing_kernel(std::size_t iteration, PathsView paths,
                                     AggregateView aggregate,
                                     const Material* mat, const Vertex* vertices,
                                     Span<const std::uint32_t> indices)
 {
   const auto index = (blockIdx.x * blockDim.x) + threadIdx.x;
-  if (index >= paths_count) return;
+  if (index >= paths.paths_count) return;
 
   thrust::default_random_engine rng(hash(hash(index) ^ iteration));
-  rng.discard(2);
 
-  auto ray = rays[index];
+  auto ray = paths.rays[index];
 
   // Path tracing
   glm::vec3 color{1.0f, 1.0f, 1.0f};
@@ -215,28 +211,48 @@ __global__ void path_tracing_kernel(unsigned int paths_count, Ray* rays,
       color *= get_background_color(ray);
       break;
     }
-
-    evaluate_material(ray, record, rng, color, mat);
     if (i == 0) {
       normal = record.normal;
       depth = record.t;
     }
+
+    evaluate_material(ray, record, rng, color, mat);
   }
 
-  // Final gathering
+  paths.color_buffer[index] = color;
+  paths.normal_buffer[index] = normal;
+  paths.depth_buffer[index] = depth;
+}
+
+__global__ void final_gathering_kernel(PathsView paths, glm::vec3* color_buffer,
+                                       Normal* normal_buffer,
+                                       float* depth_buffer,
+                                       std::size_t iteration)
+{
+  const auto index = (blockIdx.x * blockDim.x) + threadIdx.x;
+  if (index >= paths.paths_count) return;
+
   const auto sample_count = static_cast<float>(iteration + 1);
   const auto temporal_accumulate = [sample_count](auto value, auto current) {
     return (value * (sample_count - 1) + current) / sample_count;
   };
 
+  const glm::vec3 path_color = paths.color_buffer[index];
+  const Normal path_normal = paths.normal_buffer[index];
+  const float path_depth = paths.depth_buffer[index];
+  const int pixel_index = paths.pixel_indices[index];
+
   if (iteration == 0) {
-    color_buffer[index] = color;
-    normal_buffer[index] = normal;
-    depth_buffer[index] = depth;
+    color_buffer[pixel_index] = path_color;
+    normal_buffer[pixel_index] = path_normal;
+    depth_buffer[pixel_index] = path_depth;
   } else {
-    color_buffer[index] = temporal_accumulate(color_buffer[index], color);
-    normal_buffer[index] = temporal_accumulate(normal_buffer[index], normal);
-    depth_buffer[index] = temporal_accumulate(depth_buffer[index], depth);
+    color_buffer[pixel_index] =
+        temporal_accumulate(color_buffer[pixel_index], path_color);
+    normal_buffer[pixel_index] =
+        temporal_accumulate(normal_buffer[pixel_index], path_normal);
+    depth_buffer[pixel_index] =
+        temporal_accumulate(depth_buffer[pixel_index], path_depth);
   }
 }
 
@@ -299,27 +315,33 @@ PathTracer::PathTracer() = default;
 
 void PathTracer::path_trace(const Camera& camera, UResolution resolution)
 {
-  if (iteration_ >= max_iterations) return;
+  if (iteration_ < max_iterations) {
+    generate_rays(iteration_, camera, resolution, paths_.rays.data(),
+                  paths_.pixel_indices.data());
 
-  generate_rays(iteration_, camera, resolution, paths_.rays.data(),
-                paths_.pixel_indices.data());
+    const auto [width, height] = resolution;
+    const unsigned int pixels_count = width * height;
 
-  const auto [width, height] = resolution;
-  const unsigned int pixels_count = width * height;
+    const unsigned int paths_count = pixels_count;
+    const unsigned int block_size = 64;
+    const unsigned int block_count =
+        (paths_count + block_size - 1) / block_size;
 
-  const unsigned int paths_count = pixels_count;
-  const unsigned int block_size = 64;
-  const unsigned int block_count = (paths_count + block_size - 1) / block_size;
+    const PathsView paths_view{paths_, paths_count};
 
-  path_tracing_kernel<<<block_count, block_size>>>(
-      paths_count, paths_.rays.data(), paths_.pixel_indices.data(),
-      dev_color_buffer_.data(), dev_normal_buffer_.data(),
-      dev_depth_buffer_.data(), iteration_, AggregateView{dev_scene_.aggregate},
-      dev_scene_.materials.data(), bunny_.vertices.data(),
-      Span{bunny_.indices.data(), bunny_.indices_count});
-  cuda::check_CUDA_error("Path Tracing kernel");
+    path_tracing_kernel<<<block_count, block_size>>>(
+        iteration_, paths_view, AggregateView{dev_scene_.aggregate},
+        dev_scene_.materials.data(), bunny_.vertices.data(),
+        Span{bunny_.indices.data(), bunny_.indices_count});
+    cuda::check_CUDA_error("Path Tracing kernel");
 
-  ++iteration_;
+    final_gathering_kernel<<<block_count, block_size>>>(
+        paths_view, dev_color_buffer_.data(), dev_normal_buffer_.data(),
+        dev_depth_buffer_.data(), iteration_);
+    cuda::check_CUDA_error("Final Gathering kernel");
+
+    ++iteration_;
+  }
 
   path_trace_result_buffer_ = dev_color_buffer_.data();
 }
@@ -379,7 +401,7 @@ void PathTracer::resize_image(UResolution resolution)
   const auto [width, height] = resolution;
   const auto image_size = width * height;
   dev_color_buffer_ = cuda::make_buffer<glm::vec3>(image_size);
-  dev_normal_buffer_ = cuda::make_buffer<glm::vec3>(image_size);
+  dev_normal_buffer_ = cuda::make_buffer<Normal>(image_size);
   dev_depth_buffer_ = cuda::make_buffer<float>(image_size);
   dev_denoised_buffer_ = cuda::make_buffer<glm::vec3>(image_size);
   dev_denoised_buffer2_ = cuda::make_buffer<glm::vec3>(image_size);
@@ -394,6 +416,9 @@ void Paths::resize_image(UResolution resolution)
   const auto image_size = width * height;
   rays = cuda::make_buffer<Ray>(image_size);
   pixel_indices = cuda::make_buffer<int>(image_size);
+  color_buffer = cuda::make_buffer<glm::vec3>(image_size);
+  normal_buffer = cuda::make_buffer<Normal>(image_size);
+  depth_buffer = cuda::make_buffer<float>(image_size);
 }
 
 void PathTracer::create_buffers(UResolution resolution,

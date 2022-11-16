@@ -18,13 +18,37 @@ class FirstPersonCameraController;
 
 enum class DisplayBufferType { final, color, normal, depth };
 
+using Normal = glm::vec3;
+
 // SOA structure for each Ray path
 struct Paths {
   cuda::Buffer<Ray> rays;
   cuda::Buffer<int> pixel_indices;
+  cuda::Buffer<glm::vec3> color_buffer;
+  cuda::Buffer<Normal> normal_buffer;
+  cuda::Buffer<float> depth_buffer;
 
   // Changes the resolution of the frame buffer
   void resize_image(UResolution resolution);
+};
+
+struct PathsView {
+  unsigned int paths_count = 0;
+  Ray* rays = nullptr;
+  int* pixel_indices = nullptr;
+  glm::vec3* color_buffer = nullptr;
+  Normal* normal_buffer = nullptr;
+  float* depth_buffer = nullptr;
+
+  PathsView() = default;
+  PathsView(Paths& paths, unsigned int paths_count)
+      : paths_count{paths_count}, rays{paths.rays.data()},
+        pixel_indices{paths.pixel_indices.data()},
+        color_buffer{paths.color_buffer.data()},
+        normal_buffer{paths.normal_buffer.data()},
+        depth_buffer{paths.depth_buffer.data()}
+  {
+  }
 };
 
 class PathTracer {
@@ -39,7 +63,7 @@ private:
   Paths paths_;
 
   cuda::Buffer<glm::vec3> dev_color_buffer_;
-  cuda::Buffer<glm::vec3> dev_normal_buffer_;
+  cuda::Buffer<Normal> dev_normal_buffer_;
   cuda::Buffer<float> dev_depth_buffer_;
 
   cuda::Buffer<glm::vec3> dev_denoised_buffer_;
