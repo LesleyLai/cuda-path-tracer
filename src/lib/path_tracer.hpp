@@ -18,6 +18,15 @@ class FirstPersonCameraController;
 
 enum class DisplayBufferType { final, color, normal, depth };
 
+// SOA structure for each Ray path
+struct Paths {
+  cuda::Buffer<Ray> rays;
+  cuda::Buffer<int> pixel_indices;
+
+  // Changes the resolution of the frame buffer
+  void resize_image(UResolution resolution);
+};
+
 class PathTracer {
 public:
   int max_iterations = 1;
@@ -26,6 +35,8 @@ public:
 
 private:
   Scene dev_scene_;
+
+  Paths paths_;
 
   cuda::Buffer<glm::vec3> dev_color_buffer_;
   cuda::Buffer<glm::vec3> dev_normal_buffer_;

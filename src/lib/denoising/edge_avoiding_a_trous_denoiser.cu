@@ -5,8 +5,8 @@
 #include <tuple>
 
 #include "../constant_memory.cuh"
-#include "../cuda_utils/2d_indices.cuh"
 #include "../cuda_utils/cuda_check.hpp"
+#include "../cuda_utils/indices.cuh"
 #include "../ray_gen.cuh"
 
 namespace constant_memory {

@@ -24,7 +24,7 @@ add_library(cuda_pt_lib
         path_tracer.hpp
         cuda_utils/cuda_check.hpp
         cuda_utils/cuda_buffer.hpp
-        cuda_utils/2d_indices.cuh
+        cuda_utils/indices.cuh
         camera.cpp
         camera.hpp
         distributions.cuh
@@ -49,7 +49,7 @@ add_library(cuda_pt_lib
         cuda_utils/definitions.hpp
         transform.hpp
         configurations.cpp
-        configurations.hpp resolution.hpp third_party_impl.cpp prelude.cpp prelude.hpp assets.cpp assets.hpp)
+        configurations.hpp resolution.hpp third_party_impl.cpp prelude.cpp prelude.hpp assets.cpp assets.hpp hash.cuh)
 add_library(cuda_pt::lib ALIAS cuda_pt_lib)
 
 target_link_libraries(cuda_pt_lib PUBLIC fmt::fmt glm::glm

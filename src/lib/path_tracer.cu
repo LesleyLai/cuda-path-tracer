@@ -2,9 +2,10 @@
 
 #include "camera.hpp"
 #include "constant_memory.cuh"
-#include "cuda_utils/2d_indices.cuh"
 #include "cuda_utils/cuda_buffer.hpp"
+#include "cuda_utils/indices.cuh"
 #include "distributions.cuh"
+#include "hash.cuh"
 #include "ray_gen.cuh"
 #include "span.hpp"
 #include "transform.hpp"
@@ -109,18 +110,6 @@ __device__ auto ray_scene_intersection_test(Ray ray, AggregateView aggregate,
   return hit;
 }
 
-[[nodiscard]] __host__ __device__ constexpr auto hash(unsigned int a)
-    -> unsigned int
-{
-  a = (a + 0x7ed55d16) + (a << 12);
-  a = (a ^ 0xc761c23c) ^ (a >> 19);
-  a = (a + 0x165667b1) + (a << 5);
-  a = (a + 0xd3a2646c) ^ (a << 9);
-  a = (a + 0xfd7046c5) + (a << 3);
-  a = (a ^ 0xb55a4f09) ^ (a >> 16);
-  return a;
-}
-
 __device__ static auto reflectance(float cosine, float ref_idx) -> float
 {
   // Use Schlick's approximation for reflectance.
@@ -199,26 +188,21 @@ __device__ void evaluate_material(Ray& ray, const HitRecord record,
   return color;
 }
 
-__global__ void path_tracing_kernel(glm::vec3* color_buffer,
+__global__ void path_tracing_kernel(Ray* rays, unsigned int paths_count,
+                                    glm::vec3* color_buffer,
                                     glm::vec3* normal_buffer,
                                     float* depth_buffer, std::size_t iteration,
                                     AggregateView aggregate,
                                     const Material* mat, const Vertex* vertices,
                                     Span<const std::uint32_t> indices)
 {
-  GPUCamera camera = constant_memory::gpu_camera;
-
-  const auto [x, y] = cuda::calculate_index_2d();
-  if (x >= camera.width || y >= camera.height) return;
-  const auto index = cuda::flattern_index({x, y}, camera.width, camera.height);
+  const auto index = (blockIdx.x * blockDim.x) + threadIdx.x;
+  if (index > paths_count) return;
 
   thrust::default_random_engine rng(hash(hash(index) ^ iteration));
+  rng.discard(2);
 
-  thrust::uniform_real_distribution<float> dist(0.0, 1.0);
-  const auto fx = static_cast<float>(x) + dist(rng);
-  const auto fy = static_cast<float>(y) + dist(rng);
-
-  auto ray = generate_ray(camera, fx, fy);
+  auto ray = rays[index];
 
   // Path tracing
   glm::vec3 color{1.0f, 1.0f, 1.0f};
@@ -319,22 +303,21 @@ void PathTracer::path_trace(const Camera& camera, UResolution resolution)
 {
   if (iteration_ >= max_iterations) return;
 
+  generate_rays(iteration_, camera, resolution, paths_.rays.data(),
+                paths_.pixel_indices.data());
+
   const auto [width, height] = resolution;
-  constexpr unsigned int block_size = 16;
+  const unsigned int pixels_count = width * height;
 
-  const dim3 threads_per_block(block_size, block_size);
-  const auto blocks_x = (width + block_size - 1) / block_size;
-  const auto blocks_y = (height + block_size - 1) / block_size;
-  const dim3 full_blocks_per_grid(blocks_x, blocks_y);
+  const unsigned int paths_count = pixels_count;
+  const unsigned int block_size = 64;
+  const unsigned int block_count = (paths_count + block_size - 1) / block_size;
 
-  const auto gpu_camera = camera.to_gpu_camera(resolution);
-  cudaMemcpyToSymbol(constant_memory::gpu_camera, &gpu_camera,
-                     sizeof(GPUCamera));
-
-  path_tracing_kernel<<<full_blocks_per_grid, threads_per_block>>>(
-      dev_color_buffer_.data(), dev_normal_buffer_.data(),
-      dev_depth_buffer_.data(), iteration_, AggregateView{dev_scene_.aggregate},
-      dev_scene_.materials.data(), bunny_.vertices.data(),
+  path_tracing_kernel<<<block_count, block_size>>>(
+      paths_.rays.data(), paths_count, dev_color_buffer_.data(),
+      dev_normal_buffer_.data(), dev_depth_buffer_.data(), iteration_,
+      AggregateView{dev_scene_.aggregate}, dev_scene_.materials.data(),
+      bunny_.vertices.data(),
       Span{bunny_.indices.data(), bunny_.indices_count});
   cuda::check_CUDA_error("Path Tracing kernel");
 
@@ -393,6 +376,8 @@ void PathTracer::restart()
 
 void PathTracer::resize_image(UResolution resolution)
 {
+  paths_.resize_image(resolution);
+
   const auto [width, height] = resolution;
   const auto image_size = width * height;
   dev_color_buffer_ = cuda::make_buffer<glm::vec3>(image_size);
@@ -400,8 +385,17 @@ void PathTracer::resize_image(UResolution resolution)
   dev_depth_buffer_ = cuda::make_buffer<float>(image_size);
   dev_denoised_buffer_ = cuda::make_buffer<glm::vec3>(image_size);
   dev_denoised_buffer2_ = cuda::make_buffer<glm::vec3>(image_size);
+
   CUDA_CHECK(cudaDeviceSynchronize());
   restart();
+}
+
+void Paths::resize_image(UResolution resolution)
+{
+  const auto [width, height] = resolution;
+  const auto image_size = width * height;
+  rays = cuda::make_buffer<Ray>(image_size);
+  pixel_indices = cuda::make_buffer<int>(image_size);
 }
 
 void PathTracer::create_buffers(UResolution resolution,

@@ -1,5 +1,7 @@
-#ifndef CUDA_PATH_TRACER_2D_INDICES_CUH
-#define CUDA_PATH_TRACER_2D_INDICES_CUH
+#ifndef CUDA_PATH_TRACER_INDICES_CUH
+#define CUDA_PATH_TRACER_INDICES_CUH
+
+// Calculate cuda indices and block size/counts
 
 namespace cuda {
 
@@ -25,4 +27,4 @@ flattern_index(Index2D index2D, unsigned int width, unsigned int height)
 
 } // namespace cuda
 
-#endif // CUDA_PATH_TRACER_2D_INDICES_CUH
+#endif // CUDA_PATH_TRACER_INDICES_CUH
