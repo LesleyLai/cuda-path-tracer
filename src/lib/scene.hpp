@@ -6,7 +6,6 @@
 #include "span.hpp"
 #include "sphere.hpp"
 #include "transform.hpp"
-#include "triangle.hpp"
 
 enum class ObjectType : std::uint32_t { sphere, mesh };
 

@@ -30,7 +30,6 @@ add_library(cuda_pt_lib
         distributions.cuh
         hit_record.hpp
         intersections.cuh
-        triangle.hpp
         scene.hpp
         material.hpp
         scene_description.hpp

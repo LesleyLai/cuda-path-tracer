@@ -5,7 +5,6 @@
 #include "material.hpp"
 #include "mesh.hpp"
 #include "sphere.hpp"
-#include "triangle.hpp"
 
 #include "scene.hpp"
 #include "transform.hpp"

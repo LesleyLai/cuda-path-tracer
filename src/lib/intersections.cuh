@@ -3,7 +3,6 @@
 
 #include "ray.hpp"
 #include "sphere.hpp"
-#include "triangle.hpp"
 
 [[nodiscard]] __host__ __device__ auto inline ray_sphere_intersection_test(
     Ray transformed_r, Sphere sphere, HitRecord& record) -> bool
@@ -56,42 +55,27 @@ triangle_normal(glm::vec3 pt0, glm::vec3 pt1, glm::vec3 pt2)
 ray_triangle_intersection_test(Ray ray, glm::vec3 pt0, glm::vec3 pt1,
                                glm::vec3 pt2, HitRecord& record) -> bool
 {
+  constexpr float EPSILON = 0.0000001;
 
-  const auto ve = ray.origin;
-  const auto vd = ray.direction;
-  const float a = pt0.x - pt1.x;
-  const float b = pt0.y - pt1.y;
-  const float c = pt0.z - pt1.z;
-  const float d = pt0.x - pt2.x;
-  const float e = pt0.y - pt2.y;
-  const float f = pt0.z - pt2.z;
-  const float g = vd.x;
-  const float h = vd.y;
-  const float i = vd.z;
-  const float j = pt0.x - ve.x;
-  const float k = pt0.y - ve.y;
-  const float l = pt0.z - ve.z;
+  const glm::vec3 edge1 = pt1 - pt0;
+  const glm::vec3 edge2 = pt2 - pt0;
 
-  const float ei_hf = e * i - h * f;
-  const float gf_di = g * f - d * i;
-  const float dh_eg = d * h - e * g;
-  const float ak_jb = a * k - j * b;
-  const float jc_al = j * c - a * l;
-  const float bl_kc = b * l - k * c;
+  const glm::vec3 h = glm::cross(ray.direction, edge2);
+  float a = glm::dot(edge1, h);
+  if (a > -EPSILON && a < EPSILON)
+    return false; // This ray is parallel to this triangle.
 
-  const float M = a * ei_hf + b * gf_di + c * dh_eg;
+  const float f = 1.0f / a;
+  const glm::vec3 s = ray.origin - pt0;
+  const float u = f * glm::dot(s, h);
+  if (u < 0.0 || u > 1.0) return false;
 
-  // compute t
-  const float t = -(f * ak_jb + e * jc_al + d * bl_kc) / M;
+  const glm::vec3 q = glm::cross(s, edge1);
+  const float v = f * glm::dot(ray.direction, q);
+  if (v < 0.0 || u + v > 1.0) return false;
+
+  const float t = f * glm::dot(edge2, q);
   if ((t < ray.t_min) || (t > ray.t_max)) return false;
-
-  // compute gamma
-  const float gamma = (i * ak_jb + h * jc_al + g * bl_kc) / M;
-  if ((gamma < 0) || (gamma > 1)) return false;
-
-  // compute beta
-  const float beta = (j * ei_hf + k * gf_di + l * dh_eg) / M;
-  if ((beta < 0) || (beta > (1 - gamma))) return false;
 
   record.t = t;
   record.point = ray(t);
