@@ -1,6 +1,5 @@
 #include "path_tracer.hpp"
 
-#include "camera.hpp"
 #include "constant_memory.cuh"
 #include "cuda_utils/cuda_buffer.hpp"
 #include "cuda_utils/indices.cuh"
@@ -11,7 +10,6 @@
 #include "transform.hpp"
 
 #include <cstddef>
-#include <cstdio>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include <device_launch_parameters.h>
@@ -188,8 +186,8 @@ __device__ void evaluate_material(Ray& ray, const HitRecord record,
   return color;
 }
 
-__global__ void path_tracing_kernel(Ray* rays, unsigned int paths_count,
-                                    glm::vec3* color_buffer,
+__global__ void path_tracing_kernel(unsigned int paths_count, Ray* rays,
+                                    int* pixel_indices, glm::vec3* color_buffer,
                                     glm::vec3* normal_buffer,
                                     float* depth_buffer, std::size_t iteration,
                                     AggregateView aggregate,
@@ -197,7 +195,7 @@ __global__ void path_tracing_kernel(Ray* rays, unsigned int paths_count,
                                     Span<const std::uint32_t> indices)
 {
   const auto index = (blockIdx.x * blockDim.x) + threadIdx.x;
-  if (index > paths_count) return;
+  if (index >= paths_count) return;
 
   thrust::default_random_engine rng(hash(hash(index) ^ iteration));
   rng.discard(2);
@@ -314,10 +312,10 @@ void PathTracer::path_trace(const Camera& camera, UResolution resolution)
   const unsigned int block_count = (paths_count + block_size - 1) / block_size;
 
   path_tracing_kernel<<<block_count, block_size>>>(
-      paths_.rays.data(), paths_count, dev_color_buffer_.data(),
-      dev_normal_buffer_.data(), dev_depth_buffer_.data(), iteration_,
-      AggregateView{dev_scene_.aggregate}, dev_scene_.materials.data(),
-      bunny_.vertices.data(),
+      paths_count, paths_.rays.data(), paths_.pixel_indices.data(),
+      dev_color_buffer_.data(), dev_normal_buffer_.data(),
+      dev_depth_buffer_.data(), iteration_, AggregateView{dev_scene_.aggregate},
+      dev_scene_.materials.data(), bunny_.vertices.data(),
       Span{bunny_.indices.data(), bunny_.indices_count});
   cuda::check_CUDA_error("Path Tracing kernel");
 
