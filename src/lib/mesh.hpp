@@ -11,16 +11,12 @@ struct Vertex {
 };
 
 struct Mesh {
-  //  std::vector<Vertex> vertices;
-  //  std::vector<std::uint32_t> indices;
+  // Vertices
+  std::vector<glm::vec3> positions;
+  // Indices
+  std::vector<std::uint32_t> indices;
 };
 
-struct GPUMesh {
-  cuda::Buffer<Vertex> vertices;
-  cuda::Buffer<std::uint32_t> indices;
-  std::uint32_t indices_count = 0;
-};
-
-[[nodiscard]] auto load_obj(const char* filename) -> GPUMesh;
+[[nodiscard]] auto load_obj(const char* filename) -> Mesh;
 
 #endif // CUDA_PATH_TRACER_MESH_HPP

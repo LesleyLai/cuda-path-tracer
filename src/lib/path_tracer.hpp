@@ -70,8 +70,6 @@ private:
   cuda::Buffer<glm::vec3> dev_denoised_buffer2_;
   glm::vec3* path_trace_result_buffer_ = nullptr;
 
-  GPUMesh bunny_;
-
   int iteration_ = 0;
 
 public:

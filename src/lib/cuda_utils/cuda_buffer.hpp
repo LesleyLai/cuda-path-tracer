@@ -52,7 +52,7 @@ template <typename T>
 }
 
 template <typename T>
-[[nodiscard]] auto create_buffer_from_cpu_data(Span<const T> span)
+[[nodiscard]] auto make_buffer_from_cpu_data(Span<const T> span)
 {
   auto dev_buffer = cuda::make_buffer<T>(span.size());
   CUDA_CHECK(cudaMemcpy(dev_buffer.data(), span.data(), span.size() * sizeof(T),
@@ -60,10 +60,9 @@ template <typename T>
   return dev_buffer;
 }
 
-template <typename T>
-[[nodiscard]] auto create_buffer_from_cpu_data(Span<T> span)
+template <typename T> [[nodiscard]] auto make_buffer_from_cpu_data(Span<T> span)
 {
-  return create_buffer_from_cpu_data(Span<const T>{span});
+  return make_buffer_from_cpu_data(Span<const T>{span});
 }
 
 } // namespace cuda

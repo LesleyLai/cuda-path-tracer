@@ -32,7 +32,7 @@ __device__ auto get_background_color(Ray r) -> glm::vec3
   return glm::lerp(glm::vec3(0.5, 0.7, 1.0), glm::vec3(1.0, 1.0, 1.0), t);
 }
 
-__device__ auto ray_mesh_intersection_test(Ray ray, const Vertex* vertices,
+__device__ auto ray_mesh_intersection_test(Ray ray, const glm::vec3* positions,
                                            Span<const std::uint32_t> indices,
                                            const Transform& transform,
                                            HitRecord& record) -> bool
@@ -43,9 +43,9 @@ __device__ auto ray_mesh_intersection_test(Ray ray, const Vertex* vertices,
     const auto index1 = indices[j + 1];
     const auto index2 = indices[j + 2];
 
-    const auto p0 = transform_point(transform, vertices[index0].position);
-    const auto p1 = transform_point(transform, vertices[index1].position);
-    const auto p2 = transform_point(transform, vertices[index2].position);
+    const auto p0 = transform_point(transform, positions[index0]);
+    const auto p1 = transform_point(transform, positions[index1]);
+    const auto p2 = transform_point(transform, positions[index2]);
 
     if (ray_triangle_intersection_test(ray, p0, p1, p2, record)) {
       hit = true;
@@ -57,8 +57,6 @@ __device__ auto ray_mesh_intersection_test(Ray ray, const Vertex* vertices,
 
 __device__ auto ray_object_intersection_test(Ray ray, GPUObject obj,
                                              AggregateView aggregate,
-                                             const Vertex* vertices,
-                                             Span<const std::uint32_t> indices,
                                              HitRecord& record) -> bool
 {
   bool hit = false;
@@ -77,8 +75,8 @@ __device__ auto ray_object_intersection_test(Ray ray, GPUObject obj,
     break;
   }
   case ObjectType::mesh:
-    hit = ray_mesh_intersection_test(ray, vertices, indices, obj.transform,
-                                     record);
+    hit = ray_mesh_intersection_test(ray, aggregate.positions,
+                                     aggregate.indices, obj.transform, record);
     break;
   }
 
@@ -86,8 +84,6 @@ __device__ auto ray_object_intersection_test(Ray ray, GPUObject obj,
 }
 
 __device__ auto ray_scene_intersection_test(Ray ray, AggregateView aggregate,
-                                            const Vertex* vertices,
-                                            Span<const std::uint32_t> indices,
                                             HitRecord& record) -> bool
 {
   bool hit = false;
@@ -97,8 +93,7 @@ __device__ auto ray_scene_intersection_test(Ray ray, AggregateView aggregate,
 
   for (std::size_t i = 0; i < objects.size(); ++i) {
     const GPUObject obj = objects[i];
-    if (ray_object_intersection_test(ray, obj, aggregate, vertices, indices,
-                                     record)) {
+    if (ray_object_intersection_test(ray, obj, aggregate, record)) {
       hit = true;
       record.material_id = object_material_indices[i];
       ray.t_max = record.t;
@@ -188,8 +183,7 @@ __device__ void evaluate_material(Ray& ray, const HitRecord record,
 
 __global__ void path_tracing_kernel(std::size_t iteration, PathsView paths,
                                     AggregateView aggregate,
-                                    const Material* mat, const Vertex* vertices,
-                                    Span<const std::uint32_t> indices)
+                                    const Material* mat)
 {
   const auto index = (blockIdx.x * blockDim.x) + threadIdx.x;
   if (index >= paths.paths_count) return;
@@ -205,8 +199,7 @@ __global__ void path_tracing_kernel(std::size_t iteration, PathsView paths,
 
   for (int i = 0; i < 50; ++i) {
     HitRecord record;
-    const bool hit =
-        ray_scene_intersection_test(ray, aggregate, vertices, indices, record);
+    const bool hit = ray_scene_intersection_test(ray, aggregate, record);
     if (!hit) {
       color *= get_background_color(ray);
       break;
@@ -331,8 +324,7 @@ void PathTracer::path_trace(const Camera& camera, UResolution resolution)
 
     path_tracing_kernel<<<block_count, block_size>>>(
         iteration_, paths_view, AggregateView{dev_scene_.aggregate},
-        dev_scene_.materials.data(), bunny_.vertices.data(),
-        Span{bunny_.indices.data(), bunny_.indices_count});
+        dev_scene_.materials.data());
     cuda::check_CUDA_error("Path Tracing kernel");
 
     final_gathering_kernel<<<block_count, block_size>>>(
@@ -425,7 +417,5 @@ void PathTracer::create_buffers(UResolution resolution,
                                 const SceneDescription& scene_description)
 {
   dev_scene_ = scene_description.build_scene();
-  // TODO: pass assets directory down
-  bunny_ = load_obj("../../assets/models/bunny.obj");
   resize_image(resolution);
 }
