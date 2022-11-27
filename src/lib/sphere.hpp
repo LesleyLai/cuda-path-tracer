@@ -3,7 +3,7 @@
 
 #include <optional>
 
-#include "hit_record.hpp"
+#include "intersection.hpp"
 
 struct Sphere {
   glm::vec3 center = {};

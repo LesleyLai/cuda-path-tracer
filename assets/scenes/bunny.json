@@ -8,7 +8,7 @@
   },
   "sampler": {
     "type": "independent",
-    "samples": 200
+    "samples": 10
   },
   "background": [1, 1, 1],
   "materials": [

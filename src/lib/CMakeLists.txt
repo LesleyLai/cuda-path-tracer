@@ -28,7 +28,7 @@ add_library(cuda_pt_lib
         camera.cpp
         camera.hpp
         distributions.cuh
-        hit_record.hpp
+        intersection.hpp
         intersections.cuh
         scene.hpp
         material.hpp

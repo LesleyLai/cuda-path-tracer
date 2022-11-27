@@ -5,10 +5,12 @@
 #include "ray.hpp"
 #include "span.hpp"
 
+#include "path_tracer.hpp"
+
 [[nodiscard]] __device__ auto generate_ray(const GPUCamera& camera, float x,
                                            float y) -> Ray;
 
 void generate_rays(unsigned int iteration, const Camera& camera,
-                   UResolution resolution, Ray* rays, int* pixel_indices);
+                   UResolution resolution, PathsView paths);
 
 #endif // CUDA_PATH_TRACER_RAY_GEN_CUH

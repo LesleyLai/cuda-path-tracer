@@ -27,6 +27,7 @@ struct Paths {
   cuda::Buffer<glm::vec3> color_buffer;
   cuda::Buffer<Normal> normal_buffer;
   cuda::Buffer<float> depth_buffer;
+  cuda::Buffer<std::uint8_t> bounces_left_buffer;
 
   // Changes the resolution of the frame buffer
   void resize_image(UResolution resolution);
@@ -39,6 +40,7 @@ struct PathsView {
   glm::vec3* color_buffer = nullptr;
   Normal* normal_buffer = nullptr;
   float* depth_buffer = nullptr;
+  std::uint8_t* bounces_left_buffer = nullptr;
 
   PathsView() = default;
   PathsView(Paths& paths, unsigned int paths_count)
@@ -46,14 +48,20 @@ struct PathsView {
         pixel_indices{paths.pixel_indices.data()},
         color_buffer{paths.color_buffer.data()},
         normal_buffer{paths.normal_buffer.data()},
-        depth_buffer{paths.depth_buffer.data()}
+        depth_buffer{paths.depth_buffer.data()},
+        bounces_left_buffer{paths.bounces_left_buffer.data()}
   {
   }
 };
 
+enum class GPUMethod { megakernel, wavefront };
+inline constexpr const char* gpu_method_names[] = {"Megakernel", "Wavefront"};
+
 class PathTracer {
 public:
   int max_iterations = 1;
+
+  GPUMethod current_gpu_method = GPUMethod::megakernel;
 
   EdgeAvoidingATrousDenoiser atrous_denoiser{};
 
@@ -65,6 +73,8 @@ private:
   cuda::Buffer<glm::vec3> dev_color_buffer_;
   cuda::Buffer<Normal> dev_normal_buffer_;
   cuda::Buffer<float> dev_depth_buffer_;
+
+  cuda::Buffer<Intersection> dev_intersection_buffer_;
 
   cuda::Buffer<glm::vec3> dev_denoised_buffer_;
   cuda::Buffer<glm::vec3> dev_denoised_buffer2_;

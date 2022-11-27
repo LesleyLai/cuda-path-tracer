@@ -5,7 +5,7 @@
 #include "sphere.hpp"
 
 [[nodiscard]] __host__ __device__ auto inline ray_sphere_intersection_test(
-    Ray transformed_r, Sphere sphere, HitRecord& record) -> bool
+    Ray transformed_r, Sphere sphere, Intersection& record) -> bool
 {
   const auto center = sphere.center;
   const auto radius = sphere.radius;
@@ -53,7 +53,7 @@ triangle_normal(glm::vec3 pt0, glm::vec3 pt1, glm::vec3 pt2)
 
 [[nodiscard]] __host__ __device__ inline auto
 ray_triangle_intersection_test(Ray ray, glm::vec3 pt0, glm::vec3 pt1,
-                               glm::vec3 pt2, HitRecord& record) -> bool
+                               glm::vec3 pt2, Intersection& record) -> bool
 {
   constexpr float EPSILON = 0.0000001;
 
@@ -61,7 +61,7 @@ ray_triangle_intersection_test(Ray ray, glm::vec3 pt0, glm::vec3 pt1,
   const glm::vec3 edge2 = pt2 - pt0;
 
   const glm::vec3 h = glm::cross(ray.direction, edge2);
-  float a = glm::dot(edge1, h);
+  const float a = glm::dot(edge1, h);
   if (a > -EPSILON && a < EPSILON)
     return false; // This ray is parallel to this triangle.
 

@@ -102,6 +102,11 @@ void draw_path_tracer_gui(PathTracer& path_tracer, bool& enable_denoising)
   ImGui::InputInt("Max iterations", &path_tracer.max_iterations);
   path_tracer.max_iterations = std::max(1, path_tracer.max_iterations);
 
+  int current_method = static_cast<int>(path_tracer.current_gpu_method);
+  ImGui::Combo("GPU Method", &current_method, gpu_method_names,
+               IM_ARRAYSIZE(gpu_method_names));
+  path_tracer.current_gpu_method = static_cast<GPUMethod>(current_method);
+
   if (ImGui::CollapsingHeader("Denoiser")) {
     draw_denoiser_options_gui(path_tracer, enable_denoising);
   }

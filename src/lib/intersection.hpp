@@ -1,11 +1,11 @@
-#ifndef CUDA_PATH_TRACER_HIT_RECORD_HPP
-#define CUDA_PATH_TRACER_HIT_RECORD_HPP
+#ifndef CUDA_PATH_TRACER_INTERSECTION_HPP
+#define CUDA_PATH_TRACER_INTERSECTION_HPP
 
 #include <glm/vec3.hpp>
 
 enum HitFaceSide : std::uint8_t { front, back };
 
-struct HitRecord {
+struct Intersection {
   float t = 0;
   glm::vec3 point = {};
   glm::vec3 normal = {};
@@ -13,4 +13,4 @@ struct HitRecord {
   HitFaceSide side = HitFaceSide::front;
 };
 
-#endif // CUDA_PATH_TRACER_HIT_RECORD_HPP
+#endif // CUDA_PATH_TRACER_INTERSECTION_HPP

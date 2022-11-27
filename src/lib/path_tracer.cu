@@ -15,6 +15,7 @@
 #include <device_launch_parameters.h>
 
 #include <thrust/random.h>
+#include <thrust/sort.h>
 
 #include <cmath>
 #include <fmt/format.h>
@@ -24,6 +25,8 @@
 #include <glm/gtx/compatibility.hpp>
 
 #include "intersections.cuh"
+
+static constexpr std::uint8_t max_bounces = 50;
 
 __device__ auto get_background_color(Ray r) -> glm::vec3
 {
@@ -35,7 +38,7 @@ __device__ auto get_background_color(Ray r) -> glm::vec3
 __device__ auto ray_mesh_intersection_test(Ray ray, const glm::vec3* positions,
                                            Span<const std::uint32_t> indices,
                                            const Transform& transform,
-                                           HitRecord& record) -> bool
+                                           Intersection& record) -> bool
 {
   bool hit = false;
   for (std::size_t j = 0; j < indices.size(); j += 3) {
@@ -57,7 +60,7 @@ __device__ auto ray_mesh_intersection_test(Ray ray, const glm::vec3* positions,
 
 __device__ auto ray_object_intersection_test(Ray ray, GPUObject obj,
                                              AggregateView aggregate,
-                                             HitRecord& record) -> bool
+                                             Intersection& record) -> bool
 {
   bool hit = false;
   switch (obj.type) {
@@ -84,7 +87,7 @@ __device__ auto ray_object_intersection_test(Ray ray, GPUObject obj,
 }
 
 __device__ auto ray_scene_intersection_test(Ray ray, AggregateView aggregate,
-                                            HitRecord& record) -> bool
+                                            Intersection& record) -> bool
 {
   bool hit = false;
 
@@ -111,25 +114,25 @@ __device__ static auto reflectance(float cosine, float ref_idx) -> float
   return r0 + (1 - r0) * pow((1 - cosine), 5);
 }
 
-__device__ void evaluate_material(Ray& ray, const HitRecord record,
+__device__ void evaluate_material(Ray& ray, const Intersection intersection,
                                   thrust::default_random_engine& rng,
                                   glm::vec3& color, const Material* materials)
 {
-  ray.origin = record.point - 1e-4f *
-                                  glm::sign(dot(ray.direction, record.normal)) *
-                                  record.normal;
+  ray.origin = intersection.point -
+               1e-4f * glm::sign(dot(ray.direction, intersection.normal)) *
+                   intersection.normal;
   // material stuff
-  const Material& material = materials[record.material_id];
+  const Material& material = materials[intersection.material_id];
   switch (material.type) {
   case Material::Type::Diffuse: {
     auto diffuse = material.data.diffuse;
     auto scatter_direction =
-        glm::normalize(record.normal + random_in_unit_sphere(rng));
+        glm::normalize(intersection.normal + random_in_unit_sphere(rng));
 
     // Catch degenerated case
     if (abs(scatter_direction.x) < 1e-8 && abs(scatter_direction.y) < 1e-8 &&
         abs(scatter_direction.z) < 1e-8) {
-      scatter_direction = record.normal;
+      scatter_direction = intersection.normal;
     }
 
     ray.direction = scatter_direction;
@@ -137,11 +140,11 @@ __device__ void evaluate_material(Ray& ray, const HitRecord record,
   } break;
   case Material::Type::Metal: {
     const auto metal = material.data.metal;
-    const auto reflected = glm::reflect(ray.direction, record.normal);
+    const auto reflected = glm::reflect(ray.direction, intersection.normal);
     const auto scatter_direction =
         reflected + metal.fuzz * random_in_unit_sphere(rng);
     ray.direction = scatter_direction;
-    if (dot(scatter_direction, record.normal) > 0) {
+    if (dot(scatter_direction, intersection.normal) > 0) {
       color *= metal.albedo;
     } else {
       color = glm::vec3(0.0, 0.0, 0.0);
@@ -149,12 +152,13 @@ __device__ void evaluate_material(Ray& ray, const HitRecord record,
   } break;
   case Material::Type::Dielectric: {
     const auto dielectric = material.data.dielectric;
-    const auto refraction_ratio = record.side == HitFaceSide::front
+    const auto refraction_ratio = intersection.side == HitFaceSide::front
                                       ? (1.0f / dielectric.refraction_index)
                                       : dielectric.refraction_index;
 
     const auto unit_direction = normalize(ray.direction);
-    const float cos_theta = min(dot(-unit_direction, record.normal), 1.0f);
+    const float cos_theta =
+        min(dot(-unit_direction, intersection.normal), 1.0f);
     const float sin_theta = sqrtf(1.0f - cos_theta * cos_theta);
 
     const bool cannot_refract = refraction_ratio * sin_theta > 1.0;
@@ -162,15 +166,34 @@ __device__ void evaluate_material(Ray& ray, const HitRecord record,
     const glm::vec3 direction = [&]() {
       if (cannot_refract ||
           reflectance(cos_theta, refraction_ratio) > dist(rng)) {
-        return reflect(unit_direction, record.normal);
+        return reflect(unit_direction, intersection.normal);
       } else {
-        return refract(unit_direction, record.normal, refraction_ratio);
+        return refract(unit_direction, intersection.normal, refraction_ratio);
       }
     }();
 
-    ray = Ray{record.point, 1e-5, direction, std::numeric_limits<float>::max()};
+    ray = Ray{intersection.point, 1e-5, direction,
+              std::numeric_limits<float>::max()};
   } break;
   }
+}
+
+__device__ void final_gather(std::size_t iteration, glm::vec3 new_color,
+                             Normal new_normal, float new_depth,
+                             glm::vec3& current_color, Normal& current_normal,
+                             float& current_depth)
+{
+  const auto sample_count = static_cast<float>(iteration + 1);
+  const auto temporal_accumulate = [sample_count, iteration](auto old_value,
+                                                             auto new_value) {
+    return iteration == 0
+               ? new_value
+               : (old_value * (sample_count - 1) + new_value) / sample_count;
+  };
+
+  current_color = temporal_accumulate(current_color, new_color);
+  current_normal = temporal_accumulate(current_normal, new_normal);
+  current_depth = temporal_accumulate(current_depth, new_depth);
 }
 
 [[nodiscard]] __device__ auto gamma_correction(glm::vec3 color) -> glm::vec3
@@ -181,40 +204,94 @@ __device__ void evaluate_material(Ray& ray, const HitRecord record,
   return color;
 }
 
-__global__ void path_tracing_kernel(std::size_t iteration, PathsView paths,
-                                    AggregateView aggregate,
-                                    const Material* mat)
+__global__ void path_tracing_mega_kernel(const std::size_t iteration,
+                                         const AggregateView aggregate,
+                                         const Material* mat,
+                                         glm::vec3* color_buffer,
+                                         Normal* normal_buffer,
+                                         float* depth_buffer)
 {
-  const auto index = (blockIdx.x * blockDim.x) + threadIdx.x;
-  if (index >= paths.paths_count) return;
+  const auto camera = constant_memory::gpu_camera;
+  const auto [x, y] = cuda::calculate_index_2d();
+  if (x >= camera.width || y >= camera.height) return;
 
+  const auto index = cuda::flattern_index({x, y}, camera.width, camera.height);
   thrust::default_random_engine rng(hash(hash(index) ^ iteration));
 
-  auto ray = paths.rays[index];
+  thrust::uniform_real_distribution<float> dist(0.0, 1.0);
+  const float fx = static_cast<float>(x) + dist(rng);
+  const float fy = static_cast<float>(y) + dist(rng);
+
+  auto ray = generate_ray(camera, fx, fy);
 
   // Path tracing
   glm::vec3 color{1.0f, 1.0f, 1.0f};
   glm::vec3 normal = -ray.direction;
   float depth = 1e6;
 
-  for (int i = 0; i < 50; ++i) {
-    HitRecord record;
-    const bool hit = ray_scene_intersection_test(ray, aggregate, record);
+  for (int i = 0; i < max_bounces; ++i) {
+    Intersection intersection;
+    const bool hit = ray_scene_intersection_test(ray, aggregate, intersection);
     if (!hit) {
       color *= get_background_color(ray);
       break;
     }
     if (i == 0) {
-      normal = record.normal;
-      depth = record.t;
+      normal = intersection.normal;
+      depth = intersection.t;
     }
 
-    evaluate_material(ray, record, rng, color, mat);
+    evaluate_material(ray, intersection, rng, color, mat);
   }
 
-  paths.color_buffer[index] = color;
-  paths.normal_buffer[index] = normal;
-  paths.depth_buffer[index] = depth;
+  final_gather(iteration, color, normal, depth, color_buffer[index],
+               normal_buffer[index], depth_buffer[index]);
+}
+
+__global__ void intersection_kernel(PathsView paths,
+                                    Intersection* intersections,
+                                    AggregateView aggregate)
+{
+  const auto index = (blockIdx.x * blockDim.x) + threadIdx.x;
+  if (index >= paths.paths_count) return;
+
+  const auto ray = paths.rays[index];
+
+  Intersection intersection;
+  const bool hit = ray_scene_intersection_test(ray, aggregate, intersection);
+
+  if (hit) {
+    intersections[index] = intersection;
+  } else {
+    // Negative t means no intersection
+    intersections[index].t = -1.0;
+    paths.bounces_left_buffer[index] = 0;
+  }
+}
+
+__global__ void material_kernel(std::size_t iteration,
+                                unsigned int current_bounce, PathsView paths,
+                                const Material* mat,
+                                const Intersection* intersections)
+{
+  const auto index = (blockIdx.x * blockDim.x) + threadIdx.x;
+  if (index >= paths.paths_count) return;
+
+  thrust::default_random_engine rng(hash(hash(index) ^ iteration));
+  rng.discard(current_bounce);
+
+  const Intersection intersection = intersections[index];
+  if (intersection.t < 0) {
+    paths.color_buffer[index] *= get_background_color(paths.rays[index]);
+    return;
+  }
+  if (current_bounce == 0) {
+    paths.depth_buffer[index] = intersection.t;
+    paths.normal_buffer[index] = intersection.normal;
+  }
+
+  evaluate_material(paths.rays[index], intersection, rng,
+                    paths.color_buffer[index], mat);
 }
 
 __global__ void final_gathering_kernel(PathsView paths, glm::vec3* color_buffer,
@@ -225,28 +302,11 @@ __global__ void final_gathering_kernel(PathsView paths, glm::vec3* color_buffer,
   const auto index = (blockIdx.x * blockDim.x) + threadIdx.x;
   if (index >= paths.paths_count) return;
 
-  const auto sample_count = static_cast<float>(iteration + 1);
-  const auto temporal_accumulate = [sample_count](auto value, auto current) {
-    return (value * (sample_count - 1) + current) / sample_count;
-  };
-
-  const glm::vec3 path_color = paths.color_buffer[index];
-  const Normal path_normal = paths.normal_buffer[index];
-  const float path_depth = paths.depth_buffer[index];
   const int pixel_index = paths.pixel_indices[index];
 
-  if (iteration == 0) {
-    color_buffer[pixel_index] = path_color;
-    normal_buffer[pixel_index] = path_normal;
-    depth_buffer[pixel_index] = path_depth;
-  } else {
-    color_buffer[pixel_index] =
-        temporal_accumulate(color_buffer[pixel_index], path_color);
-    normal_buffer[pixel_index] =
-        temporal_accumulate(normal_buffer[pixel_index], path_normal);
-    depth_buffer[pixel_index] =
-        temporal_accumulate(depth_buffer[pixel_index], path_depth);
-  }
+  final_gather(iteration, paths.color_buffer[index], paths.normal_buffer[index],
+               paths.depth_buffer[index], color_buffer[pixel_index],
+               normal_buffer[pixel_index], depth_buffer[pixel_index]);
 }
 
 enum class BufferNormalizationMethod { none, neg1_1_to_0_1 };
@@ -309,28 +369,89 @@ PathTracer::PathTracer() = default;
 void PathTracer::path_trace(const Camera& camera, UResolution resolution)
 {
   if (iteration_ < max_iterations) {
-    generate_rays(iteration_, camera, resolution, paths_.rays.data(),
-                  paths_.pixel_indices.data());
-
     const auto [width, height] = resolution;
     const unsigned int pixels_count = width * height;
 
-    const unsigned int paths_count = pixels_count;
-    const unsigned int block_size = 64;
-    const unsigned int block_count =
-        (paths_count + block_size - 1) / block_size;
+    const AggregateView aggregate_view{dev_scene_.aggregate};
 
-    const PathsView paths_view{paths_, paths_count};
+    if (current_gpu_method == GPUMethod::megakernel) {
+      const auto [width, height] = resolution;
 
-    path_tracing_kernel<<<block_count, block_size>>>(
-        iteration_, paths_view, AggregateView{dev_scene_.aggregate},
-        dev_scene_.materials.data());
-    cuda::check_CUDA_error("Path Tracing kernel");
+      const dim3 block_size(8, 8);
+      const dim3 blocks_per_grid( //
+          (width + block_size.x - 1) / block_size.x,
+          (height + block_size.y - 1) / block_size.y);
 
-    final_gathering_kernel<<<block_count, block_size>>>(
-        paths_view, dev_color_buffer_.data(), dev_normal_buffer_.data(),
-        dev_depth_buffer_.data(), iteration_);
-    cuda::check_CUDA_error("Final Gathering kernel");
+      const auto gpu_camera = camera.to_gpu_camera(resolution);
+      cudaMemcpyToSymbol(constant_memory::gpu_camera, &gpu_camera,
+                         sizeof(GPUCamera));
+
+      path_tracing_mega_kernel<<<blocks_per_grid, block_size>>>(
+          iteration_, aggregate_view, dev_scene_.materials.data(),
+          dev_color_buffer_.data(), dev_normal_buffer_.data(),
+          dev_depth_buffer_.data());
+      cuda::check_CUDA_error("Path Tracing mega kernel");
+    } else { // wavefront
+      // For debug purpose
+      //      cudaMemset(dev_intersection_buffer_.data(), 0,
+      //                 resolution.width * resolution.height);
+
+      generate_rays(iteration_, camera, resolution,
+                    PathsView{paths_, pixels_count});
+
+      unsigned int paths_count = pixels_count;
+      for (int i = 0; i < max_bounces && paths_count > 0; ++i) {
+        const unsigned int block_size = 64;
+        const unsigned int block_count =
+            (paths_count + block_size - 1) / block_size;
+
+        // fmt::print("bounce {}, paths: {}\n", i + 1, paths_count);
+
+        const PathsView paths_view{paths_, paths_count};
+        intersection_kernel<<<block_count, block_size>>>(
+            paths_view, dev_intersection_buffer_.data(), aggregate_view);
+        cuda::check_CUDA_error(
+            fmt::format("Path Tracing intersection kernel bounce {}", i + 1));
+
+        const auto paths_begin = thrust::make_zip_iterator(
+            paths_view.rays, paths_view.pixel_indices, paths_view.color_buffer,
+            paths_view.normal_buffer, paths_view.depth_buffer,
+            paths_view.bounces_left_buffer);
+        auto paths_end = paths_begin + paths_count;
+
+        //        thrust::sort_by_key(
+        //            thrust::device, dev_intersection_buffer_.data(),
+        //            dev_intersection_buffer_.data() + paths_count,
+        //            paths_begin,
+        //            [] __device__(const Intersection& lhs, const Intersection&
+        //            rhs) {
+        //              return lhs.material_id < rhs.material_id;
+        //            });
+
+        material_kernel<<<block_count, block_size>>>(
+            iteration_, i, paths_view, dev_scene_.materials.data(),
+            dev_intersection_buffer_.data());
+        cuda::check_CUDA_error(fmt::format("Material kernel bounce {}", i + 1));
+
+        // Partition out terminated rays
+        paths_end = thrust::stable_partition(
+            thrust::device, paths_begin, paths_end,
+            [] __device__(auto elem) { return thrust::get<5>(elem) > 0; });
+        paths_count = paths_end - paths_begin;
+      }
+
+      {
+        const unsigned int paths_count = pixels_count;
+        const unsigned int block_size = 64;
+        const unsigned int block_count =
+            (paths_count + block_size - 1) / block_size;
+
+        final_gathering_kernel<<<block_count, block_size>>>(
+            PathsView{paths_, paths_count}, dev_color_buffer_.data(),
+            dev_normal_buffer_.data(), dev_depth_buffer_.data(), iteration_);
+        cuda::check_CUDA_error("Final Gathering kernel");
+      }
+    }
 
     ++iteration_;
   }
@@ -395,6 +516,7 @@ void PathTracer::resize_image(UResolution resolution)
   dev_color_buffer_ = cuda::make_buffer<glm::vec3>(image_size);
   dev_normal_buffer_ = cuda::make_buffer<Normal>(image_size);
   dev_depth_buffer_ = cuda::make_buffer<float>(image_size);
+  dev_intersection_buffer_ = cuda::make_buffer<Intersection>(image_size);
   dev_denoised_buffer_ = cuda::make_buffer<glm::vec3>(image_size);
   dev_denoised_buffer2_ = cuda::make_buffer<glm::vec3>(image_size);
 
@@ -411,6 +533,7 @@ void Paths::resize_image(UResolution resolution)
   color_buffer = cuda::make_buffer<glm::vec3>(image_size);
   normal_buffer = cuda::make_buffer<Normal>(image_size);
   depth_buffer = cuda::make_buffer<float>(image_size);
+  bounces_left_buffer = cuda::make_buffer<std::uint8_t>(image_size);
 }
 
 void PathTracer::create_buffers(UResolution resolution,

@@ -4,11 +4,11 @@
 #include "cuda_utils/cuda_check.hpp"
 #include "cuda_utils/indices.cuh"
 #include "hash.cuh"
+#include "path_tracer.hpp"
 
 #include <thrust/random.h>
 
-__global__ void raygen_kernel(std::size_t iteration, Ray* ray_buffer,
-                              int* pixel_indices)
+__global__ void raygen_kernel(std::size_t iteration, PathsView paths)
 {
   GPUCamera camera = constant_memory::gpu_camera;
   const auto [x, y] = cuda::calculate_index_2d();
@@ -23,8 +23,12 @@ __global__ void raygen_kernel(std::size_t iteration, Ray* ray_buffer,
 
   auto ray = generate_ray(camera, fx, fy);
 
-  ray_buffer[index] = ray;
-  pixel_indices[index] = static_cast<int>(index);
+  paths.color_buffer[index] = glm::vec3{1.0, 1.0, 1.0};
+  paths.depth_buffer[index] = 1e6;
+  paths.normal_buffer[index] = -ray.direction;
+  paths.bounces_left_buffer[index] = 50;
+  paths.rays[index] = ray;
+  paths.pixel_indices[index] = static_cast<int>(index);
 }
 
 [[nodiscard]] __device__ auto generate_ray(const GPUCamera& camera, float x,
@@ -57,7 +61,7 @@ __global__ void raygen_kernel(std::size_t iteration, Ray* ray_buffer,
 }
 
 void generate_rays(unsigned int iteration, const Camera& camera,
-                   UResolution resolution, Ray* rays, int* pixel_indices)
+                   UResolution resolution, PathsView paths)
 {
   const auto [width, height] = resolution;
 
@@ -70,7 +74,6 @@ void generate_rays(unsigned int iteration, const Camera& camera,
   cudaMemcpyToSymbol(constant_memory::gpu_camera, &gpu_camera,
                      sizeof(GPUCamera));
 
-  raygen_kernel<<<blocks_per_grid, block_size>>>(iteration, rays,
-                                                 pixel_indices);
+  raygen_kernel<<<blocks_per_grid, block_size>>>(iteration, paths);
   cuda::check_CUDA_error("Raygen kernel");
 }
