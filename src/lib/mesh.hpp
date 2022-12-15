@@ -4,17 +4,15 @@
 #include <glm/glm.hpp>
 #include <vector>
 
+#include "aabb.hpp"
 #include "cuda_utils/cuda_buffer.hpp"
-
-struct Vertex {
-  glm::vec3 position{};
-};
 
 struct Mesh {
   // Vertices
   std::vector<glm::vec3> positions;
   // Indices
   std::vector<std::uint32_t> indices;
+  AABB aabb;
 };
 
 [[nodiscard]] auto load_obj(const char* filename) -> Mesh;

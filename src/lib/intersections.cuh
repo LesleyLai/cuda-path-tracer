@@ -5,15 +5,15 @@
 #include "sphere.hpp"
 
 [[nodiscard]] __host__ __device__ auto inline ray_sphere_intersection_test(
-    Ray transformed_r, Sphere sphere, Intersection& record) -> bool
+    Ray ray, Sphere sphere, Intersection& record) -> bool
 {
   const auto center = sphere.center;
   const auto radius = sphere.radius;
 
-  const auto oc = transformed_r.origin - center;
+  const auto oc = ray.origin - center;
 
-  const auto a = dot(transformed_r.direction, transformed_r.direction);
-  const auto b = 2 * dot(transformed_r.direction, oc);
+  const auto a = dot(ray.direction, ray.direction);
+  const auto b = 2 * dot(ray.direction, oc);
   const auto c = dot(oc, oc) - radius * radius;
   const auto discrimination = b * b - 4 * a * c;
 
@@ -25,23 +25,18 @@
 
   auto hit_record_from_t = [&](float t) {
     record.t = t;
-    record.point = transformed_r(t);
+    record.point = ray(t);
     const auto outward_normal = (record.point - center) / radius;
-    record.side = dot(transformed_r.direction, outward_normal) < 0
-                      ? HitFaceSide::front
-                      : HitFaceSide::back;
+    record.side = dot(ray.direction, outward_normal) < 0 ? HitFaceSide::front
+                                                         : HitFaceSide::back;
     record.normal =
         record.side == HitFaceSide::front ? outward_normal : -outward_normal;
     return true;
   };
 
   // Get the smaller non-negative value of t1, t2
-  if (t1 >= transformed_r.t_min && t1 <= transformed_r.t_max) {
-    return hit_record_from_t(t1);
-  }
-  if (t2 >= transformed_r.t_min && t2 <= transformed_r.t_max) {
-    return hit_record_from_t(t2);
-  }
+  if (t1 >= ray.t_min && t1 <= ray.t_max) { return hit_record_from_t(t1); }
+  if (t2 >= ray.t_min && t2 <= ray.t_max) { return hit_record_from_t(t2); }
   return false;
 }
 
@@ -87,6 +82,24 @@ ray_triangle_intersection_test(Ray ray, glm::vec3 pt0, glm::vec3 pt1,
   record.material_id = 1;
 
   return true;
+}
+
+[[nodiscard]] __host__
+    __device__ auto inline ray_aabb_intersection_test(Ray ray, AABB aabb)
+        -> bool
+{
+  if (aabb.is_empty()) return false;
+
+  const glm::vec3 t_min = (aabb.min - ray.origin) / ray.direction;
+  const glm::vec3 t_max = (aabb.max - ray.origin) / ray.direction;
+
+  const glm::vec3 real_min = glm::min(t_min, t_max);
+  const glm::vec3 real_max = glm::max(t_min, t_max);
+
+  const float minmax = std::min(std::min(real_max.x, real_max.y), real_max.z);
+  const float maxmin = std::max(std::max(real_min.x, real_min.y), real_min.z);
+
+  return minmax >= maxmin;
 }
 
 #endif // CUDA_PATH_TRACER_INTERSECTIONS_CUH

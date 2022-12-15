@@ -29,5 +29,12 @@
     for (unsigned j = 0; j != 3; j++)
       indices.push_back(mesh->mFaces[i].mIndices[j]);
 
-  return Mesh{.positions = std::move(positions), .indices = std::move(indices)};
+  const AABB aabb{
+      .min = {mesh->mAABB.mMin.x, mesh->mAABB.mMin.y, mesh->mAABB.mMin.z},
+      .max = {mesh->mAABB.mMax.x, mesh->mAABB.mMax.y, mesh->mAABB.mMax.z},
+  };
+
+  return Mesh{.positions = std::move(positions),
+              .indices = std::move(indices),
+              .aabb = aabb};
 }

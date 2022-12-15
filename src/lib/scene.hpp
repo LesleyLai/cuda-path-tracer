@@ -2,6 +2,8 @@
 #define CUDA_PATH_TRACER_SCENE_HPP
 
 #include "cuda_utils/cuda_buffer.hpp"
+
+#include "aabb.hpp"
 #include "mesh.hpp"
 #include "span.hpp"
 #include "sphere.hpp"
@@ -14,6 +16,7 @@ struct GPUObject {
   std::uint32_t index{};
 
   Transform transform;
+  AABB aabb;
 };
 
 // An aggregate contains object data on the GPU

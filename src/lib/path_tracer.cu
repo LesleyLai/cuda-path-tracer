@@ -63,6 +63,9 @@ __device__ auto ray_object_intersection_test(Ray ray, GPUObject obj,
                                              Intersection& record) -> bool
 {
   bool hit = false;
+
+  if (!ray_aabb_intersection_test(ray, obj.aabb)) { return false; }
+
   switch (obj.type) {
   case ObjectType::sphere: {
     const auto transformed_ray = inverse_transform_ray(obj.transform, ray);
@@ -196,11 +199,9 @@ __device__ void final_gather(std::size_t iteration, glm::vec3 new_color,
   current_depth = temporal_accumulate(current_depth, new_depth);
 }
 
-[[nodiscard]] __device__ auto gamma_correction(glm::vec3 color) -> glm::vec3
+[[nodiscard]] __device__ auto linear_to_gamma(glm::vec3 color) -> glm::vec3
 {
-  color.x = glm::pow(color.x, 1.f / 2.2f);
-  color.y = glm::pow(color.y, 1.f / 2.2f);
-  color.z = glm::pow(color.z, 1.f / 2.2f);
+  color = glm::pow(color, glm::vec3(1.f / 2.2f));
   return color;
 }
 
@@ -326,7 +327,7 @@ __global__ void preview_depth_kernel(UResolution resolution,
     return static_cast<unsigned char>(glm::clamp(v, 0.f, 1.f) * 255.99f);
   };
 
-  color = gamma_correction(color);
+  color = linear_to_gamma(color);
 
   if (x <= width && y <= height) {
     pbo[index] =
@@ -355,7 +356,7 @@ __global__ void preview_kernel(UResolution resolution,
     return static_cast<unsigned char>(glm::clamp(v, 0.f, 1.f) * 255.99f);
   };
 
-  color = gamma_correction(color);
+  color = linear_to_gamma(color);
 
   if (x <= width && y <= height) {
     pbo[index] =
@@ -392,20 +393,18 @@ void PathTracer::path_trace(const Camera& camera, UResolution resolution)
           dev_depth_buffer_.data());
       cuda::check_CUDA_error("Path Tracing mega kernel");
     } else { // wavefront
-      // For debug purpose
-      //      cudaMemset(dev_intersection_buffer_.data(), 0,
-      //                 resolution.width * resolution.height);
-
       generate_rays(iteration_, camera, resolution,
                     PathsView{paths_, pixels_count});
 
       unsigned int paths_count = pixels_count;
       for (int i = 0; i < max_bounces && paths_count > 0; ++i) {
+        //        fmt::print("Path count for iteration {} bounce {}: {}\n",
+        //        iteration_, i,
+        //                   paths_count);
+
         const unsigned int block_size = 64;
         const unsigned int block_count =
             (paths_count + block_size - 1) / block_size;
-
-        // fmt::print("bounce {}, paths: {}\n", i + 1, paths_count);
 
         const PathsView paths_view{paths_, paths_count};
         intersection_kernel<<<block_count, block_size>>>(

@@ -61,7 +61,7 @@ class PathTracer {
 public:
   int max_iterations = 1;
 
-  GPUMethod current_gpu_method = GPUMethod::megakernel;
+  GPUMethod current_gpu_method = GPUMethod::wavefront;
 
   EdgeAvoidingATrousDenoiser atrous_denoiser{};
 

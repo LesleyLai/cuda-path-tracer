@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include "aabb.hpp"
 #include "ray.hpp"
 
 class Transform {
@@ -42,6 +43,13 @@ transform_point(const Transform& transform, const glm::vec3& point) -> glm::vec3
 }
 
 [[nodiscard]] HOST_DEVICE inline auto
+transform_vector(const Transform& transform, const glm::vec3& vec) -> glm::vec3
+{
+  const auto v = transform.m() * glm::vec4(vec, 0.0);
+  return glm::vec3{v};
+}
+
+[[nodiscard]] HOST_DEVICE inline auto
 inverse_transform_ray(const Transform& transform, const Ray& ray) -> Ray
 {
   const glm::vec3 origin = transform_point(transform.inverse(), ray.origin);
@@ -56,6 +64,17 @@ transform_normal(const Transform& transform, const glm::vec3& normal)
 {
   return glm::vec3{glm::transpose(transform.inverse_m()) *
                    glm::vec4(normal, 0.f)};
+}
+
+[[nodiscard]] HOST_DEVICE inline auto transform_aabb(const Transform& transform,
+                                                     const AABB& aabb) -> AABB
+{
+  if (aabb.is_empty()) return aabb;
+
+  const auto p1 = transform_point(transform, aabb.min);
+  const auto p2 = transform_point(transform, aabb.max);
+
+  return AABB{glm::min(p1, p2), glm::max(p1, p2)};
 }
 
 #endif // CUDA_PATH_TRACER_TRANSFORM_HPP

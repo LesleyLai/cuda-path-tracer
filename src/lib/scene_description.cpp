@@ -13,23 +13,42 @@ auto SceneDescription::build_scene() const -> Scene
   std::vector<GPUObject> gpu_objects;
   std::vector<Sphere> spheres;
 
+  const auto bunny = load_obj("../../assets/models/bunny.obj");
+
   for (auto& object : objects_) {
     ObjectType object_type;
     std::uint32_t index = 0;
+    AABB aabb;
 
-    std::visit(overloaded{[&](Sphere sphere) {
-                            object_type = ObjectType::sphere;
-                            index = static_cast<std::uint32_t>(spheres.size());
+    std::visit(
+        overloaded{[&](Sphere sphere) {
+                     object_type = ObjectType::sphere;
+                     index = static_cast<std::uint32_t>(spheres.size());
 
-                            spheres.push_back(sphere);
-                          },
-                          [&](const Mesh& /*mesh*/) {
-                            object_type = ObjectType::mesh;
-                            index = 0;
-                          }},
-               object.shape);
+                     const auto transformed_origin =
+                         transform_point(object.transform, sphere.center);
+                     const float transformed_radius =
+                         glm::length(transform_vector(
+                             object.transform, glm::vec3(1.0, 0.0, 0.0))) *
+                         sphere.radius;
+                     aabb = AABB{.min = transformed_origin -
+                                        glm::vec3(transformed_radius),
+                                 .max = transformed_origin +
+                                        glm::vec3(transformed_radius)};
 
-    gpu_objects.emplace_back(object_type, index, object.transform);
+                     spheres.push_back(sphere);
+                   },
+                   [&](const Mesh& /*mesh*/) {
+                     object_type = ObjectType::mesh;
+                     index = 0;
+                     aabb = transform_aabb(object.transform, bunny.aabb);
+                   }},
+        object.shape);
+
+    gpu_objects.push_back(GPUObject{.type = object_type,
+                                    .index = index,
+                                    .transform = object.transform,
+                                    .aabb = aabb});
   }
 
   Aggregate aggregate;
@@ -72,8 +91,6 @@ auto SceneDescription::build_scene() const -> Scene
   auto sphere_span = Span<const Sphere>{spheres.data(), spheres.size()};
   aggregate.spheres = cuda::make_buffer_from_cpu_data(sphere_span);
   aggregate.sphere_count = std::size(spheres);
-
-  const auto bunny = load_obj("../../assets/models/bunny.obj");
 
   // Mesh stuff
   auto bunny_indices =
