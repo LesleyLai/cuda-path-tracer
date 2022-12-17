@@ -39,7 +39,7 @@
     },
     {
       "type": "mesh",
-      "filename": "../../assets/models/bunny.obj",
+      "filename": "../models/bunny.obj",
       "transform": {
         "translate": [1.0, -0.5, -2.0]
       },
@@ -47,7 +47,7 @@
     },
     {
       "type": "mesh",
-      "filename": "../../assets/models/bunny.obj",
+      "filename": "../models/bunny.obj",
       "transform": [
         {
           "scale": 0.5

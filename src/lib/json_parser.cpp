@@ -5,6 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform.hpp>
 
+#include <filesystem>
 #include <fstream>
 
 #include <nlohmann/json.hpp>
@@ -94,7 +95,9 @@ void read_materials(const nlohmann::json& json, SceneDescription& scene)
   }
 }
 
-void read_surfaces(const nlohmann::json& json, SceneDescription& scene)
+void read_surfaces(const nlohmann::json& json,
+                   const std::filesystem::path& file_dir,
+                   SceneDescription& scene)
 {
   const auto surfaces = json["surfaces"];
   if (!surfaces.is_array()) { panic("surfaces is not array"); }
@@ -110,12 +113,13 @@ void read_surfaces(const nlohmann::json& json, SceneDescription& scene)
     } else if (type == "mesh") {
       const auto transform = surface["transform"].get<Transform>();
       const auto filename = surface["filename"].get<std::string>();
+      const std::string file_path = canonical(file_dir / filename).string();
 
       const MeshRef mesh_ref = [&]() {
-        if (auto maybe_mesh = scene.get_mesh(filename); maybe_mesh) {
+        if (auto maybe_mesh = scene.get_mesh(file_path); maybe_mesh) {
           return maybe_mesh.value();
         }
-        return scene.add_mesh(filename, load_obj(filename.data()));
+        return scene.add_mesh(file_path, load_obj(file_path.c_str()));
       }();
 
       scene.add_object(mesh_ref, transform, material);
@@ -125,7 +129,7 @@ void read_surfaces(const nlohmann::json& json, SceneDescription& scene)
   }
 }
 
-[[nodiscard]] auto json_from_file(const std::string filename) -> nlohmann::json
+[[nodiscard]] auto json_from_file(const std::string& filename) -> nlohmann::json
 {
   std::ifstream file{filename};
   if (not file.is_open()) {
@@ -143,9 +147,11 @@ void read_surfaces(const nlohmann::json& json, SceneDescription& scene)
 {
   const nlohmann::json json = json_from_file(filename);
 
+  const auto file_dir = std::filesystem::path{filename}.remove_filename();
+
   SceneDescription scene_desc;
   read_materials(json, scene_desc);
-  read_surfaces(json, scene_desc);
+  read_surfaces(json, file_dir, scene_desc);
 
   const auto camera = json["camera"];
   if (!camera.is_object()) { panic("Camera is not an object!"); }

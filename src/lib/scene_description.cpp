@@ -106,9 +106,8 @@ auto SceneDescription::build_scene() const -> Scene
   return Scene{std::move(aggregate), std::move(materials)};
 }
 
-void SceneDescription::add_object(
-    std::variant<Sphere, std::reference_wrapper<const Mesh>> shape,
-    Transform transform, const std::string& material_name)
+void SceneDescription::add_object(Shape shape, Transform transform,
+                                  const std::string& material_name)
 {
   if (const auto itr = material_map_.find(material_name);
       itr == material_map_.end()) {
