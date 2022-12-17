@@ -39,8 +39,8 @@ add_library(cuda_pt_lib
         denoising/edge_avoiding_a_trous_denoiser.hpp
         ray_gen.cuh
         ray_gen.cu
-        json.cpp
-        json.hpp
+        json_parser.cpp
+        json_parser.hpp
         scene_parser.cpp
         scene_parser.hpp
         constant_memory.cuh

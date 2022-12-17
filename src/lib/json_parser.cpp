@@ -1,9 +1,13 @@
-#include "json.hpp"
+#include "json_parser.hpp"
 
 #include <fmt/format.h>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform.hpp>
+
+#include <fstream>
+
+#include <nlohmann/json.hpp>
 
 #include "prelude.hpp"
 
@@ -121,19 +125,30 @@ void read_surfaces(const nlohmann::json& json, SceneDescription& scene)
   }
 }
 
+[[nodiscard]] auto json_from_file(const std::string filename) -> nlohmann::json
+{
+  std::ifstream file{filename};
+  if (not file.is_open()) {
+    panic(fmt::format("Cannot open file {}\n", filename));
+  }
+  nlohmann::json json;
+  file >> json;
+  return json;
+}
+
 } // anonymous namespace
 
-[[nodiscard]] auto scene_from_json(const nlohmann::json& json)
+[[nodiscard]] auto scene_from_json(const std::string& filename)
     -> SceneDescription
 {
+  const nlohmann::json json = json_from_file(filename);
+
   SceneDescription scene_desc;
   read_materials(json, scene_desc);
   read_surfaces(json, scene_desc);
 
   const auto camera = json["camera"];
-  if (!camera.is_object()) {
-    throw std::runtime_error{"camera is not an object!"};
-  }
+  if (!camera.is_object()) { panic("Camera is not an object!"); }
 
   if (const auto itr = camera.find("resolution"); itr != camera.end()) {
     scene_desc.resolution = itr->get<Resolution>();
