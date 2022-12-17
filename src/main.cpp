@@ -1,8 +1,8 @@
 #include "cli/cli.hpp"
 #include "interactive-app/app.hpp"
-#include "lib/assets.hpp"
+#include "lib/assets/assets.hpp"
+#include "lib/assets/scene_parser.hpp"
 #include "lib/prelude.hpp"
-#include "lib/scene_parser.hpp"
 
 #include <cstdio>
 

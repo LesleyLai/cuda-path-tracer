@@ -1,7 +1,7 @@
 #include "app.hpp"
 
-#include "../lib/scene_parser.hpp"
 #include "gui.hpp"
+#include "lib/assets/scene_parser.hpp"
 #include "preview_renderer.hpp"
 
 #include <GLFW/glfw3.h>

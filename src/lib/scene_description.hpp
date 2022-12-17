@@ -41,7 +41,7 @@ public:
   void add_object(Shape shape, Transform transform,
                   const std::string& material_name);
 
-  auto get_mesh(const std::string& name) -> std::optional<MeshRef>;
+  auto get_mesh(const std::string& name) const -> std::optional<MeshRef>;
 
   auto add_mesh(std::string name, Mesh&& mesh) -> MeshRef;
 

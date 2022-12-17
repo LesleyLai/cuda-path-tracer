@@ -1,7 +1,7 @@
 #ifndef CUDA_PATH_TRACER_JSON_PARSER_HPP
 #define CUDA_PATH_TRACER_JSON_PARSER_HPP
 
-#include "scene_description.hpp"
+#include "lib/scene_description.hpp"
 
 #include <string>
 

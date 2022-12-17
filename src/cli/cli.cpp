@@ -6,9 +6,9 @@
 #include <fmt/format.h>
 #include <stb_image_write.h>
 
+#include "lib/assets/scene_parser.hpp"
 #include "lib/camera.hpp"
 #include "lib/path_tracer.hpp"
-#include "lib/scene_parser.hpp"
 
 void execute_cli_version(const SceneDescription& scene_desc)
 {

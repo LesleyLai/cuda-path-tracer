@@ -119,7 +119,7 @@ void SceneDescription::add_object(Shape shape, Transform transform,
   }
 }
 
-auto SceneDescription::get_mesh(const std::string& name)
+auto SceneDescription::get_mesh(const std::string& name) const
     -> std::optional<std::reference_wrapper<const Mesh>>
 {
   if (auto itr = mesh_map_.find(name); itr != mesh_map_.end()) {

@@ -1,5 +1,5 @@
 #include "assets.hpp"
-#include "prelude.hpp"
+#include "lib/prelude.hpp"
 
 #include <optional>
 

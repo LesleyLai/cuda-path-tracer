@@ -1,4 +1,5 @@
 #include "json_parser.hpp"
+#include "model_loader.hpp"
 
 #include <fmt/format.h>
 
@@ -10,7 +11,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include "prelude.hpp"
+#include "lib/prelude.hpp"
 
 namespace nlohmann {
 
@@ -95,6 +96,15 @@ void read_materials(const nlohmann::json& json, SceneDescription& scene)
   }
 }
 
+auto load_mesh_if_not_exist(SceneDescription& scene,
+                            const std::string& filename) -> MeshRef
+{
+  if (auto maybe_mesh = scene.get_mesh(filename); maybe_mesh) {
+    return maybe_mesh.value();
+  }
+  return scene.add_mesh(filename, load_obj(filename.c_str()));
+}
+
 void read_surfaces(const nlohmann::json& json,
                    const std::filesystem::path& file_dir,
                    SceneDescription& scene)
@@ -113,15 +123,9 @@ void read_surfaces(const nlohmann::json& json,
     } else if (type == "mesh") {
       const auto transform = surface["transform"].get<Transform>();
       const auto filename = surface["filename"].get<std::string>();
-      const std::string file_path = canonical(file_dir / filename).string();
-
-      const MeshRef mesh_ref = [&]() {
-        if (auto maybe_mesh = scene.get_mesh(file_path); maybe_mesh) {
-          return maybe_mesh.value();
-        }
-        return scene.add_mesh(file_path, load_obj(file_path.c_str()));
-      }();
-
+      const std::filesystem::path file_path = canonical(file_dir / filename);
+      const MeshRef mesh_ref =
+          load_mesh_if_not_exist(scene, file_path.string());
       scene.add_object(mesh_ref, transform, material);
     } else {
       panic(fmt::format("Not supported surface type {}", type));

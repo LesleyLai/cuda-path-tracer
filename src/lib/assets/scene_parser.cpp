@@ -1,7 +1,7 @@
 #include "scene_parser.hpp"
 
-#include "json_parser.hpp"
-#include "prelude.hpp"
+#include "lib/assets/json_parser.hpp"
+#include "lib/prelude.hpp"
 
 [[nodiscard]] auto read_scene(const CliConfigurations& configs,
                               const std::filesystem::path& asset_path)

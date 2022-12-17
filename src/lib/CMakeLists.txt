@@ -39,16 +39,15 @@ add_library(cuda_pt_lib
         denoising/edge_avoiding_a_trous_denoiser.hpp
         ray_gen.cuh
         ray_gen.cu
-        json_parser.cpp
-        json_parser.hpp
-        scene_parser.cpp
-        scene_parser.hpp
+        assets/json_parser.cpp
+        assets/json_parser.hpp
+        assets/scene_parser.cpp
+        assets/scene_parser.hpp
         constant_memory.cuh
-        mesh.cpp
         cuda_utils/definitions.hpp
         transform.hpp
         configurations.cpp
-        configurations.hpp resolution.hpp third_party_impl.cpp prelude.cpp prelude.hpp assets.cpp assets.hpp hash.cuh aabb.hpp)
+        configurations.hpp resolution.hpp third_party_impl.cpp prelude.cpp prelude.hpp assets/assets.cpp assets/assets.hpp hash.cuh aabb.hpp assets/model_loader.cpp assets/model_loader.hpp)
 add_library(cuda_pt::lib ALIAS cuda_pt_lib)
 
 target_link_libraries(cuda_pt_lib PUBLIC fmt::fmt glm::glm

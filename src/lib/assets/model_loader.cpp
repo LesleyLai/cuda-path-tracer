@@ -1,5 +1,8 @@
-#include "mesh.hpp"
-#include "prelude.hpp"
+#include "model_loader.hpp"
+
+#include "lib/prelude.hpp"
+
+#include <fmt/format.h>
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>

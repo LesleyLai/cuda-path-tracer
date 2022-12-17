@@ -4,8 +4,8 @@
 #include <filesystem>
 #include <string_view>
 
-#include "configurations.hpp"
-#include "scene_description.hpp"
+#include "lib/configurations.hpp"
+#include "lib/scene_description.hpp"
 
 [[nodiscard]] auto read_scene(const CliConfigurations& configs,
                               const std::filesystem::path& asset_path)
