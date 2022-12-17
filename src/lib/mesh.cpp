@@ -7,6 +7,8 @@
 
 [[nodiscard]] auto load_obj(const char* filename) -> Mesh
 {
+  fmt::print("Loading {}\n", filename);
+
   Assimp::Importer importer;
 
   const aiScene* scene = importer.ReadFile(

@@ -13,8 +13,6 @@ auto SceneDescription::build_scene() const -> Scene
   std::vector<GPUObject> gpu_objects;
   std::vector<Sphere> spheres;
 
-  const auto bunny = load_obj("../../assets/models/bunny.obj");
-
   for (auto& object : objects_) {
     ObjectType object_type;
     std::uint32_t index = 0;
@@ -38,10 +36,10 @@ auto SceneDescription::build_scene() const -> Scene
 
                      spheres.push_back(sphere);
                    },
-                   [&](const Mesh& /*mesh*/) {
+                   [&](const Mesh& mesh) {
                      object_type = ObjectType::mesh;
                      index = 0;
-                     aabb = transform_aabb(object.transform, bunny.aabb);
+                     aabb = transform_aabb(object.transform, mesh.aabb);
                    }},
         object.shape);
 
@@ -93,16 +91,56 @@ auto SceneDescription::build_scene() const -> Scene
   aggregate.sphere_count = std::size(spheres);
 
   // Mesh stuff
-  auto bunny_indices =
-      Span<const std::uint32_t>{bunny.indices.data(), bunny.indices.size()};
+  const auto& mesh = not mesh_map_.empty() ? mesh_map_.begin()->second : Mesh{};
+  auto mesh_indices =
+      Span<const std::uint32_t>{mesh.indices.data(), mesh.indices.size()};
 
   aggregate.positions = cuda::make_buffer_from_cpu_data(
-      Span{bunny.positions.data(), bunny.positions.size()});
-  aggregate.indices = cuda::make_buffer_from_cpu_data(bunny_indices);
-  aggregate.indices_count = static_cast<std::uint32_t>(bunny_indices.size());
+      Span{mesh.positions.data(), mesh.positions.size()});
+  aggregate.indices = cuda::make_buffer_from_cpu_data(mesh_indices);
+  aggregate.indices_count = static_cast<std::uint32_t>(mesh_indices.size());
 
   cuda::Buffer<Material> materials = cuda::make_buffer_from_cpu_data(
       Span(materials_vec.data(), materials_vec.size()));
 
   return Scene{std::move(aggregate), std::move(materials)};
+}
+
+void SceneDescription::add_object(
+    std::variant<Sphere, std::reference_wrapper<const Mesh>> shape,
+    Transform transform, const std::string& material_name)
+{
+  if (const auto itr = material_map_.find(material_name);
+      itr == material_map_.end()) {
+    throw std::runtime_error{
+        fmt::format("Cannot find material {}", material_name)};
+  } else {
+    objects_.push_back(Object{shape, transform});
+    objects_material_mapping_.push_back(material_name);
+  }
+}
+
+auto SceneDescription::get_mesh(const std::string& name)
+    -> std::optional<std::reference_wrapper<const Mesh>>
+{
+  if (auto itr = mesh_map_.find(name); itr != mesh_map_.end()) {
+    return std::cref(itr->second);
+  } else {
+    return std::nullopt;
+  }
+}
+
+auto SceneDescription::add_mesh(std::string name, Mesh&& mesh)
+    -> std::reference_wrapper<const Mesh>
+{
+  auto [itr, inserted] =
+      mesh_map_.try_emplace(std::move(name), std::move(mesh));
+  if (!inserted) { panic("Cannot add the same mesh twice!"); }
+
+  return std::cref(itr->second);
+}
+
+void SceneDescription::add_material(const std::string& name, Material material)
+{
+  material_map_.try_emplace(name, material);
 }

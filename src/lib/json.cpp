@@ -105,7 +105,16 @@ void read_surfaces(const nlohmann::json& json, SceneDescription& scene)
       scene.add_object(Sphere{glm::vec3{0}, radius}, transform, material);
     } else if (type == "mesh") {
       const auto transform = surface["transform"].get<Transform>();
-      scene.add_object(Mesh{}, transform, material);
+      const auto filename = surface["filename"].get<std::string>();
+
+      const MeshRef mesh_ref = [&]() {
+        if (auto maybe_mesh = scene.get_mesh(filename); maybe_mesh) {
+          return maybe_mesh.value();
+        }
+        return scene.add_mesh(filename, load_obj(filename.data()));
+      }();
+
+      scene.add_object(mesh_ref, transform, material);
     } else {
       panic(fmt::format("Not supported surface type {}", type));
     }

@@ -22,7 +22,13 @@ try {
   const auto result = options.parse(argc, argv);
   if (result.count("help")) {
     fmt::print("{}\n", options.help());
-    exit(0);
+    std::exit(0);
+  }
+
+  if (not result.count("filename")) {
+    fmt::print(stderr, "Usage: cuda_pt [options] <filename>\n");
+    fmt::print(stderr, "Run 'cuda_pt --help' for more information");
+    std::exit(1);
   }
 
   const auto spp = result.count("spp") == 0
@@ -35,6 +41,6 @@ try {
       .spp = spp,
   };
 } catch (const cxxopts::OptionException& e) {
-  fmt::print("{}\n", e.what());
+  fmt::print(stderr, "{}\n", e.what());
   std::exit(1);
 }

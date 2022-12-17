@@ -9,11 +9,16 @@
 #include "scene.hpp"
 #include "transform.hpp"
 
+#include "prelude.hpp"
+
 #include <map>
+#include <optional>
 #include <variant>
 #include <vector>
 
-using Shape = std::variant<Sphere, Mesh>;
+using MeshRef = std::reference_wrapper<const Mesh>;
+
+using Shape = std::variant<Sphere, MeshRef>;
 struct Object {
   Shape shape;
   Transform transform;
@@ -23,6 +28,7 @@ class SceneDescription {
   std::vector<Object> objects_;
   std::map<std::string, Material, std::less<>> material_map_;
   std::vector<std::string> objects_material_mapping_;
+  std::map<std::string, Mesh, std::less<>> mesh_map_;
 
 public:
   std::string filename;
@@ -30,23 +36,14 @@ public:
   Resolution resolution;
   int spp;
 
-  void add_material(const std::string& name, Material material)
-  {
-    material_map_.try_emplace(name, material);
-  }
+  void add_material(const std::string& name, Material material);
 
   void add_object(Shape shape, Transform transform,
-                  const std::string& material_name)
-  {
-    if (const auto itr = material_map_.find(material_name);
-        itr == material_map_.end()) {
-      throw std::runtime_error{
-          fmt::format("Cannot find material {}", material_name)};
-    } else {
-      objects_.push_back(Object{shape, transform});
-      objects_material_mapping_.push_back(material_name);
-    }
-  }
+                  const std::string& material_name);
+
+  auto get_mesh(const std::string& name) -> std::optional<MeshRef>;
+
+  auto add_mesh(std::string name, Mesh&& mesh) -> MeshRef;
 
   [[nodiscard]] auto build_scene() const -> Scene;
 };
