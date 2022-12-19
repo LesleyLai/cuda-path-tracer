@@ -13,6 +13,7 @@ if (MSVC)
             /wd4201
             /wd4245
             /wd4324 # Disable "structure was padded due to alignment specifier"
+            /wd4127
             >)
     target_compile_definitions(cuda_pt_compiler_warnings INTERFACE _CRT_SECURE_NO_WARNINGS)
     if (CUDA_PATH_TRACER_WARNING_AS_ERROR)

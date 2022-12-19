@@ -37,7 +37,7 @@ __global__ void raygen_kernel(std::size_t iteration, PathsView paths)
   const float aspect_ratio =
       static_cast<float>(camera.width) / static_cast<float>(camera.height);
 
-  const float viewport_height = 2.0f * tan(camera.fov / 2);
+  const float viewport_height = 2.0f * tan(camera.vfov / 2);
   const float viewport_width = aspect_ratio * viewport_height;
   const float focal_length = 1.0;
 

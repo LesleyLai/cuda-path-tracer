@@ -50,7 +50,7 @@ void execute_cli_version(const SceneDescription& scene_desc)
   CUDA_CHECK(cudaDeviceSynchronize());
 
   fmt::print("Done path tracing {}!\n", scene_desc.filename);
-  fmt::print("Elapsed time: {:%S}s\n", end - start);
+  fmt::print("Elapsed time: {}\n", std::chrono::duration<double>(end - start));
 
   if (stbi_write_png("output.png", width, height, 4, buffer.data(), 0) == 0) {
     fmt::print(stderr, "Filed to write to file output.png");

@@ -14,7 +14,7 @@
 #include <chrono>
 
 App::App(const SceneDescription& scene_desc)
-    : first_person_camera_controller_{camera_}
+    : camera_{scene_desc.camera}, first_person_camera_controller_{camera_}
 {
   int gpu_device = 0;
   int device_count = 0;

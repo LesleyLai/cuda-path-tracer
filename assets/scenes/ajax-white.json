@@ -7,10 +7,7 @@
     },
     "vfov": 20,
     "fdist": 800,
-    "resolution": [
-      720,
-      1280
-    ]
+    "resolution": [720, 1280]
   },
   "sampler": {
     "type": "independent",
@@ -24,7 +21,7 @@
     {
       "type": "lambertian",
       "name": "white",
-      "albedo": 0.2
+      "albedo": [0.2, 0.2, 0.2]
     }
   ],
   "surfaces": [
@@ -35,46 +32,19 @@
       "material": "white",
       "transform": [
         {
-          "translate": [
-            -0.053126335,
-            0.030193329,
-            17.283958
-          ]
+          "translate": [-0.053126335, 0.030193329, 17.283958]
         },
         {
           "scale": 0.2
         },
         {
-          "rotate": [
-            150,
-            0,
-            1,
-            0
-          ]
+          "rotate": 150,
+          "axis": [0, 1, 0]
         },
         {
-          "translate": [
-            0,
-            0,
-            -0.25
-          ]
+          "translate": [0, 0, -0.25]
         }
       ]
-    },
-    {
-      "type": "mesh",
-      "name": "floor",
-      "filename": "../models/plane.obj",
-      "transform": [
-        {
-          "scale": [
-            1000,
-            1,
-            1000
-          ]
-        }
-      ],
-      "material": "white"
     }
   ]
 }
