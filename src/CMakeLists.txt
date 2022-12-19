@@ -5,6 +5,7 @@ add_subdirectory(cli)
 add_executable(cuda_pt main.cpp cli/cli.cpp cli/cli.hpp)
 
 target_link_libraries(cuda_pt PUBLIC cuda_pt::lib cuda_pt::interactive_app)
+set_property(TARGET cuda_pt PROPERTY CUDA_SEPARABLE_COMPILATION ON)
 
 if (CUDA_PATH_TRACER_COPY_ASSETS)
     add_custom_target(assets
