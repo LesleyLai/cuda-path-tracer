@@ -2,7 +2,6 @@
 #define CUDA_PATH_TRACER_TRANSFORM_HPP
 
 #include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
 
 #include "aabb.hpp"
 #include "ray.hpp"
@@ -71,10 +70,20 @@ transform_normal(const Transform& transform, const glm::vec3& normal)
 {
   if (aabb.is_empty()) return aabb;
 
-  const auto p1 = transform_point(transform, aabb.min);
-  const auto p2 = transform_point(transform, aabb.max);
+  glm::vec3 pts[8];
+  pts[0].x = pts[1].x = pts[2].x = pts[3].x = aabb.min.x;
+  pts[4].x = pts[5].x = pts[6].x = pts[7].x = aabb.max.x;
+  pts[0].y = pts[1].y = pts[4].y = pts[5].y = aabb.min.y;
+  pts[2].y = pts[3].y = pts[6].y = pts[7].y = aabb.max.y;
+  pts[0].z = pts[2].z = pts[4].z = pts[6].z = aabb.min.z;
+  pts[1].z = pts[3].z = pts[5].z = pts[7].z = aabb.max.z;
 
-  return AABB{glm::min(p1, p2), glm::max(p1, p2)};
+  const auto p0 = transform_point(transform, pts[0]);
+  AABB new_aabb{p0, p0};
+  for (std::size_t i = 1; i < 8; ++i) {
+    new_aabb = new_aabb.enclose(transform_point(transform, pts[i]));
+  }
+  return new_aabb;
 }
 
 #endif // CUDA_PATH_TRACER_TRANSFORM_HPP

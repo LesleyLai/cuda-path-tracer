@@ -19,6 +19,16 @@ struct AABB {
       if (min[i] > max[i]) return true;
     return false;
   }
+
+  [[nodiscard]] HOST_DEVICE auto enclose(glm::vec3 pt) const -> AABB
+  {
+    return AABB{glm::min(min, pt), glm::max(max, pt)};
+  }
+
+  [[nodiscard]] HOST_DEVICE friend auto aabb_union(AABB lhs, AABB rhs) -> AABB
+  {
+    return AABB{glm::min(lhs.min, rhs.min), glm::max(lhs.max, rhs.max)};
+  }
 };
 
 #endif // CUDA_PATH_TRACER_AABB_HPP
