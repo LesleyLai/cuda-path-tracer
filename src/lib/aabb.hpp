@@ -2,6 +2,7 @@
 #define CUDA_PATH_TRACER_AABB_HPP
 
 #include <algorithm>
+#include <glm/common.hpp>
 #include <glm/vec3.hpp>
 
 #include "intersection.hpp"
