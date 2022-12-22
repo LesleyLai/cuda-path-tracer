@@ -65,6 +65,7 @@ transform_normal(const Transform& transform, const glm::vec3& normal)
                    glm::vec4(normal, 0.f)};
 }
 
+// TODO: Unit test this
 [[nodiscard]] HOST_DEVICE inline auto transform_aabb(const Transform& transform,
                                                      const AABB& aabb) -> AABB
 {

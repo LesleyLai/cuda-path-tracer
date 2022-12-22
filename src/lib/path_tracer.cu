@@ -7,6 +7,7 @@
 #include "hash.cuh"
 #include "ray_gen.cuh"
 #include "span.hpp"
+#include "static_stack.hpp"
 #include "transform.hpp"
 
 #include <cstddef>
@@ -23,6 +24,7 @@
 #include <iterator>
 
 #include <glm/gtx/compatibility.hpp>
+#include <lib/accelerators/bvh.hpp>
 
 #include "intersections.cuh"
 
@@ -37,24 +39,58 @@ __device__ auto get_background_color(Ray r) -> glm::vec3
 
 __device__ auto ray_mesh_intersection_test(Ray ray, const glm::vec3* positions,
                                            Span<const std::uint32_t> indices,
+                                           Span<const BVHNode> bvh,
                                            const Transform& transform,
                                            Intersection& record) -> bool
 {
   bool hit = false;
-  for (std::size_t j = 0; j < indices.size(); j += 3) {
-    const auto index0 = indices[j];
-    const auto index1 = indices[j + 1];
-    const auto index2 = indices[j + 2];
 
-    const auto p0 = transform_point(transform, positions[index0]);
-    const auto p1 = transform_point(transform, positions[index1]);
-    const auto p2 = transform_point(transform, positions[index2]);
+  const Ray transformed_ray = inverse_transform_ray(transform, ray);
 
-    if (ray_triangle_intersection_test(ray, p0, p1, p2, record)) {
-      hit = true;
-      ray.t_max = record.t;
+  StaticStack<unsigned int, 24> node_stack;
+  node_stack.push(0);
+  while (node_stack.size() != 0) {
+    const std::uint32_t node_index = node_stack.pop();
+    const BVHNode node = bvh[node_index];
+
+    if (node.is_leaf) {
+      const std::uint32_t i = node.data.leaf.triangle_index_begin;
+
+      const std::uint32_t index0 = indices[i];
+      const std::uint32_t index1 = indices[i + 1];
+      const std::uint32_t index2 = indices[i + 2];
+      const glm::vec3 p0 = transform_point(transform, positions[index0]);
+      const glm::vec3 p1 = transform_point(transform, positions[index1]);
+      const glm::vec3 p2 = transform_point(transform, positions[index2]);
+
+      if (ray_triangle_intersection_test(ray, p0, p1, p2, record)) {
+        hit = true;
+        ray.t_max = record.t;
+      }
+    } else {
+      // Intersect AABB for an inner node
+      if (ray_aabb_intersection_test(transformed_ray, node.aabb)) {
+        const auto [left_index, right_index] = node.data.inner;
+        node_stack.push(right_index);
+        node_stack.push(left_index);
+      }
     }
   }
+
+  // for (std::size_t j = 0; j < indices.size(); j += 3) {
+  //   const auto index0 = indices[j];
+  //   const auto index1 = indices[j + 1];
+  //   const auto index2 = indices[j + 2];
+  //
+  //   const auto p0 = transform_point(transform, positions[index0]);
+  //   const auto p1 = transform_point(transform, positions[index1]);
+  //   const auto p2 = transform_point(transform, positions[index2]);
+  //
+  //   if (ray_triangle_intersection_test(ray, p0, p1, p2, record)) {
+  //     hit = true;
+  //     ray.t_max = record.t;
+  //   }
+  // }
   return hit;
 }
 
@@ -81,8 +117,9 @@ __device__ auto ray_object_intersection_test(Ray ray, GPUObject obj,
     break;
   }
   case ObjectType::mesh:
-    hit = ray_mesh_intersection_test(ray, aggregate.positions,
-                                     aggregate.indices, obj.transform, record);
+    hit =
+        ray_mesh_intersection_test(ray, aggregate.positions, aggregate.indices,
+                                   aggregate.bvh, obj.transform, record);
     break;
   }
 

@@ -10,9 +10,15 @@
 
 #include "cuda_utils/definitions.hpp"
 
+// TODO: Unit test this
 struct AABB {
   glm::vec3 min{FLT_MAX};
   glm::vec3 max{-FLT_MAX};
+
+  [[nodiscard]] HOST_DEVICE auto center() const -> glm::vec3
+  {
+    return (min + max) / 2.0f;
+  }
 
   [[nodiscard]] HOST_DEVICE constexpr auto is_empty() const -> bool
   {
@@ -24,6 +30,11 @@ struct AABB {
   [[nodiscard]] HOST_DEVICE auto enclose(glm::vec3 pt) const -> AABB
   {
     return AABB{glm::min(min, pt), glm::max(max, pt)};
+  }
+
+  [[nodiscard]] HOST_DEVICE auto enclose(AABB other) const -> AABB
+  {
+    return AABB{glm::min(min, other.min), glm::max(max, other.max)};
   }
 
   [[nodiscard]] HOST_DEVICE friend auto aabb_union(AABB lhs, AABB rhs) -> AABB

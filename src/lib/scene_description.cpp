@@ -95,10 +95,19 @@ auto SceneDescription::build_scene() const -> Scene
   auto mesh_indices =
       Span<const std::uint32_t>{mesh.indices.data(), mesh.indices.size()};
 
+  fmt::print("Start building bvh\n");
+  const auto bvh = bvh_from_mesh(mesh);
+  fmt::print("Finished building bvh!\n");
+
   aggregate.positions = cuda::make_buffer_from_cpu_data(
       Span{mesh.positions.data(), mesh.positions.size()});
   aggregate.indices = cuda::make_buffer_from_cpu_data(mesh_indices);
   aggregate.indices_count = static_cast<std::uint32_t>(mesh_indices.size());
+
+  const auto bvh_span = Span{bvh.data(), bvh.size()};
+
+  aggregate.bvh = cuda::make_buffer_from_cpu_data(bvh_span);
+  aggregate.bvh_size = static_cast<unsigned int>(bvh_span.size());
 
   cuda::Buffer<Material> materials = cuda::make_buffer_from_cpu_data(
       Span(materials_vec.data(), materials_vec.size()));

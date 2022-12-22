@@ -9,6 +9,8 @@
 #include "sphere.hpp"
 #include "transform.hpp"
 
+#include "accelerators/bvh.hpp"
+
 enum class ObjectType : std::uint32_t { sphere, mesh };
 
 struct GPUObject {
@@ -32,6 +34,9 @@ struct Aggregate {
   cuda::Buffer<glm::vec3> positions;
   cuda::Buffer<std::uint32_t> indices;
   std::uint32_t indices_count = 0;
+
+  cuda::Buffer<BVHNode> bvh;
+  std::uint32_t bvh_size = 0;
 };
 
 struct AggregateView {
@@ -39,8 +44,10 @@ struct AggregateView {
   const std::uint32_t* object_material_indices = nullptr;
   Span<const Sphere> spheres;
 
-  const glm::vec3* positions;
+  const glm::vec3* positions = nullptr;
   Span<const std::uint32_t> indices;
+
+  Span<const BVHNode> bvh;
 
   AggregateView() = default;
   explicit AggregateView(const Aggregate& aggregate)
@@ -48,7 +55,8 @@ struct AggregateView {
         object_material_indices{aggregate.object_material_indices.data()},
         spheres{aggregate.spheres.data(), aggregate.sphere_count},
         positions{aggregate.positions.data()}, indices{aggregate.indices.data(),
-                                                       aggregate.indices_count}
+                                                       aggregate.indices_count},
+        bvh{aggregate.bvh.data(), aggregate.bvh_size}
   {
   }
 };

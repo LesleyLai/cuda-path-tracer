@@ -29,7 +29,8 @@ Checks: '*,
 -hicpp-no-array-decay,
 -hicpp-signed-bitwise,
 -hicpp-uppercase-literal-suffix,
--hicpp-braces-around-statements
+-hicpp-braces-around-statements,
+-misc-no-recursion
 '
 WarningsAsErrors: '*'
 HeaderFilterRegex: 'catch.hpp'
@@ -43,6 +44,8 @@ CheckOptions:
     value: '400'
   - key: misc-non-private-member-variables-in-classes.IgnorePublicMemberVariables
     value: '1'
+  - key: cppcoreguidelines-special-member-functions.AllowMissingMoveFunctionsWhenCopyIsDeleted
+    value: 'true'
   - key: cppcoreguidelines-avoid-magic-numbers.IgnoredIntegerValues
     value: '1;2;3;4;8;'
   - key: bugprone-reserved-identifier.AllowedIdentifiers
