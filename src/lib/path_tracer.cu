@@ -545,6 +545,8 @@ void PathTracer::restart()
 
 void PathTracer::resize_image(UResolution resolution)
 {
+  CUDA_CHECK(cudaDeviceSynchronize());
+
   paths_.resize_image(resolution);
 
   const auto [width, height] = resolution;
@@ -557,6 +559,7 @@ void PathTracer::resize_image(UResolution resolution)
   dev_denoised_buffer2_ = cuda::make_buffer<glm::vec3>(image_size);
 
   CUDA_CHECK(cudaDeviceSynchronize());
+
   restart();
 }
 

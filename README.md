@@ -10,7 +10,6 @@ Interactive Path Tracer in CUDA.
 - Sphere and triangle mesh primitives
 - obj file loading
 - BVH (bounding volume hierarchy) acceleration
-- Wavefront Path Tracing
 - Edge-Avoiding À-Trous Wavelet Transform denoising
 
 ## Build

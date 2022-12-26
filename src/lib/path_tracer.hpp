@@ -54,14 +54,14 @@ struct PathsView {
   }
 };
 
-enum class GPUMethod { megakernel, wavefront };
-inline constexpr const char* gpu_method_names[] = {"Megakernel", "Wavefront"};
+enum class GPUMethod { megakernel, streaming };
+inline constexpr const char* gpu_method_names[] = {"Megakernel", "Streaming"};
 
 class PathTracer {
 public:
   int max_iterations = 1;
 
-  GPUMethod current_gpu_method = GPUMethod::wavefront;
+  GPUMethod current_gpu_method = GPUMethod::streaming;
 
   EdgeAvoidingATrousDenoiser atrous_denoiser{};
 
