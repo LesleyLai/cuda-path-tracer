@@ -14,7 +14,8 @@
 #include <chrono>
 
 App::App(const SceneDescription& scene_desc)
-    : camera_{scene_desc.camera}, first_person_camera_controller_{camera_}
+    : camera_{scene_desc.camera},
+      camera_controller_{std::make_unique<FirstPersonCameraController>(camera_)}
 {
   int gpu_device = 0;
   int device_count = 0;
@@ -61,7 +62,7 @@ App::App(const SceneDescription& scene_desc)
       }
       break;
     case GLFW_REPEAT: {
-      if (app->first_person_camera_controller_.handle_key_input(key)) {
+      if (app->camera_controller_->on_key_press(key)) {
         app->path_tracer_.restart();
       }
     }
@@ -81,38 +82,37 @@ App::App(const SceneDescription& scene_desc)
     }
   });
 
-  glfwSetCursorPosCallback(
-      window_.get(), [](GLFWwindow* window, double x, double y) {
-        auto* app_ptr = static_cast<App*>(glfwGetWindowUserPointer(window));
-        auto& first_person_camera = app_ptr->first_person_camera_controller_;
+  glfwSetCursorPosCallback(window_.get(), [](GLFWwindow* window, double x,
+                                             double y) {
+    int width = 0, height = 0;
+    glfwGetWindowSize(window, &width, &height);
+    const auto f_width = static_cast<float>(width);
+    const auto f_height = static_cast<float>(height);
 
-        int width = 0, height = 0;
-        glfwGetWindowSize(window, &width, &height);
-        const auto f_width = static_cast<float>(width);
-        const auto f_height = static_cast<float>(height);
+    static bool first_mouse = true;
+    static float last_x = f_width / 2.0f;
+    static float last_y = f_height / 2.0f;
+    if (first_mouse) {
+      last_x = static_cast<float>(x);
+      last_y = static_cast<float>(y);
+      first_mouse = false;
+    }
 
-        static bool first_mouse = true;
-        static float last_x = f_width / 2.0f;
-        static float last_y = f_height / 2.0f;
-        if (first_mouse) {
-          last_x = static_cast<float>(x);
-          last_y = static_cast<float>(y);
-          first_mouse = false;
-        }
+    // reversed since y-coordinates go from bottom to top
+    const auto x_offset = static_cast<float>(x) - last_x;
+    const auto y_offset = last_y - static_cast<float>(y);
 
-        // reversed since y-coordinates go from bottom to top
-        const auto x_offset = static_cast<float>(x) - last_x;
-        const auto y_offset = last_y - static_cast<float>(y);
+    last_x = static_cast<float>(x);
+    last_y = static_cast<float>(y);
 
-        last_x = static_cast<float>(x);
-        last_y = static_cast<float>(y);
-
-        if (app_ptr->is_right_clicking_) {
-          first_person_camera.mouse_move(glm::radians(x_offset),
-                                         glm::radians(y_offset));
-          app_ptr->path_tracer_.restart();
-        }
-      });
+    auto* app_ptr = static_cast<App*>(glfwGetWindowUserPointer(window));
+    if (app_ptr->is_right_clicking_) {
+      if (app_ptr->camera_controller_->on_mouse_move(glm::radians(x_offset),
+                                                     glm::radians(y_offset))) {
+        app_ptr->path_tracer_.restart();
+      }
+    }
+  });
 
   glfwSetErrorCallback([](int error, const char* description) {
     fmt::print(stderr, "Error {}: {}\n", error, description);

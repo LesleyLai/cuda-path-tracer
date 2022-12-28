@@ -132,10 +132,8 @@ void draw_display_gui(DisplayBufferType& display_type)
 }
 
 /// @return true if need to restart path tracer
-[[nodiscard]] auto
-draw_camera_gui(Camera& camera,
-                FirstPersonCameraController& first_person_camera_controller)
-    -> bool
+[[nodiscard]] auto draw_camera_gui(Camera& camera,
+                                   CameraController& camera_controller) -> bool
 {
   bool pathtracer_restart_required = false;
 
@@ -158,28 +156,7 @@ draw_camera_gui(Camera& camera,
                IM_ARRAYSIZE(controllers));
 
   if (ImGui::CollapsingHeader("First Person Controller")) {
-    ImGui::Text("w/a/s/d: forward/left/backward/right");
-    ImGui::Text("r/f: up/down");
-    ImGui::Text("mouse right drag: pitch/yaw");
-
-    ImGui::NewLine();
-    ImGui::Text("Transformation:");
-
-    if (ImGui::Button("Reset")) {
-      first_person_camera_controller.reset();
-      pathtracer_restart_required = true;
-    }
-
-    if (glm::vec3 position = first_person_camera_controller.position();
-        ImGui::InputFloat3("Translation", &position[0])) {
-      first_person_camera_controller.set_position(position);
-      pathtracer_restart_required = true;
-    }
-
-    ImGui::NewLine();
-    ImGui::Text("Movement:");
-    ImGui::SliderFloat("Speed", &first_person_camera_controller.speed, 0.001f,
-                       100, "%.3f", ImGuiSliderFlags_Logarithmic);
+    pathtracer_restart_required |= camera_controller.draw_gui();
   }
 
   return pathtracer_restart_required;
@@ -206,7 +183,7 @@ void App::draw_gui()
     }
 
     if (ImGui::BeginTabItem("Camera")) {
-      if (draw_camera_gui(camera_, first_person_camera_controller_)) {
+      if (draw_camera_gui(camera_, *camera_controller_)) {
         path_tracer_.restart();
       }
       ImGui::EndTabItem();

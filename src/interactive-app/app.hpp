@@ -17,7 +17,7 @@ class App {
   PathTracer path_tracer_;
 
   Camera camera_;
-  FirstPersonCameraController first_person_camera_controller_;
+  std::unique_ptr<CameraController> camera_controller_;
 
   bool is_right_clicking_ = false;
   bool hide_control_panel_ = false;

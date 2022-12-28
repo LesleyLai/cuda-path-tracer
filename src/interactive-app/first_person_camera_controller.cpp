@@ -7,25 +7,19 @@
 
 #include "lib/camera.hpp"
 
+#include <imgui.h>
+
 void FirstPersonCameraController::update_camera()
 {
-  camera_->position = position_;
-  camera_->rotation = glm::quat_cast(glm::yawPitchRoll(yaw_, pitch_, 0.f));
-}
-
-void FirstPersonCameraController::mouse_move(float x_offset, float y_offset)
-{
-  set_yaw(yaw_ + x_offset);
-  set_pitch(pitch_ + y_offset);
-
-  update_camera();
+  camera().position = position_;
+  camera().rotation = glm::quat_cast(glm::yawPitchRoll(yaw_, pitch_, 0.f));
 }
 
 void FirstPersonCameraController::reset()
 {
-  position_ = camera_->position;
+  position_ = camera().position;
 
-  const glm::vec3 eulers = glm::eulerAngles(camera_->rotation);
+  const glm::vec3 eulers = glm::eulerAngles(camera().rotation);
 
   pitch_ = eulers.x;
   yaw_ = eulers.y;
@@ -56,7 +50,7 @@ void FirstPersonCameraController::set_yaw(float yaw) noexcept
   yaw_ = yaw - pi;
 }
 
-auto FirstPersonCameraController::handle_key_input(int key) -> bool
+auto FirstPersonCameraController::on_key_press(int key) -> bool
 {
   glm::vec3 direction;
   switch (key) {
@@ -88,4 +82,45 @@ auto FirstPersonCameraController::handle_key_input(int key) -> bool
   update_camera();
 
   return true;
+}
+
+auto FirstPersonCameraController::on_mouse_move(float x_offset, float y_offset)
+    -> bool
+{
+  set_yaw(yaw_ + x_offset);
+  set_pitch(pitch_ + y_offset);
+
+  update_camera();
+  return true;
+}
+
+auto FirstPersonCameraController::draw_gui() -> bool
+{
+  bool camera_moved = false;
+
+  ImGui::Text("w/a/s/d: forward/left/backward/right");
+  ImGui::Text("r/f: up/down");
+  ImGui::Text("mouse right drag: pitch/yaw");
+
+  ImGui::NewLine();
+  ImGui::Text("Transformation:");
+
+  if (ImGui::Button("Reset")) {
+    reset();
+    camera_moved = true;
+    update_camera();
+  }
+
+  if (glm::vec3 position = this->position();
+      ImGui::InputFloat3("Translation", &position[0])) {
+    set_position(position);
+    camera_moved = true;
+    update_camera();
+  }
+
+  ImGui::NewLine();
+  ImGui::Text("Movement:");
+  ImGui::SliderFloat("Speed", &speed, 0.001f, 100, "%.3f",
+                     ImGuiSliderFlags_Logarithmic);
+  return camera_moved;
 }

@@ -13,7 +13,7 @@ add_library(cuda_pt_interactive_app
         gui.cpp
         gui.hpp
         first_person_camera_controller.cpp
-        first_person_camera_controller.hpp)
+        first_person_camera_controller.hpp camera_controller.hpp)
 add_library(cuda_pt::interactive_app ALIAS cuda_pt_interactive_app)
 
 target_link_libraries(cuda_pt_interactive_app PRIVATE
