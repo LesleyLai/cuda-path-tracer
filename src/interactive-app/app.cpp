@@ -61,38 +61,8 @@ App::App(const SceneDescription& scene_desc)
       }
       break;
     case GLFW_REPEAT: {
-      switch (key) {
-      case GLFW_KEY_W:
-        app->first_person_camera_controller_.move(
-            FirstPersonCameraController::MoveDirection::forward);
+      if (app->first_person_camera_controller_.handle_key_input(key)) {
         app->path_tracer_.restart();
-        break;
-      case GLFW_KEY_A:
-        app->first_person_camera_controller_.move(
-            FirstPersonCameraController::MoveDirection::left);
-        app->path_tracer_.restart();
-        break;
-      case GLFW_KEY_S:
-        app->first_person_camera_controller_.move(
-            FirstPersonCameraController::MoveDirection::backward);
-        app->path_tracer_.restart();
-        break;
-      case GLFW_KEY_D:
-        app->first_person_camera_controller_.move(
-            FirstPersonCameraController::MoveDirection::right);
-        app->path_tracer_.restart();
-        break;
-      case GLFW_KEY_R:
-        app->first_person_camera_controller_.move(
-            FirstPersonCameraController::MoveDirection::up);
-        app->path_tracer_.restart();
-        break;
-      case GLFW_KEY_F:
-        app->first_person_camera_controller_.move(
-            FirstPersonCameraController::MoveDirection::down);
-        app->path_tracer_.restart();
-        break;
-      default: break;
       }
     }
     default: break;

@@ -1,16 +1,16 @@
 {
   "camera": {
     "transform": {
-      "from": [12, 6.75, 0],
+      "from": [6, 5.5, 0],
       "at": [0, 3.5, 0],
       "up": [0, 1, 0]
     },
-    "vfov": 40,
+    "vfov": 80,
     "resolution": [720, 1280]
   },
   "sampler": {
     "type": "independent",
-    "samples": 100
+    "samples": 10
   },
   "background": 5,
   "accelerator": {

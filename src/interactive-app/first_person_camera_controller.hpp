@@ -10,7 +10,6 @@ class FirstPersonCameraController {
   Camera* camera_ = nullptr;
 
   glm::vec3 position_ = glm::vec3(0.0);
-  float fov_ = glm::pi<float>() / 2.f;
   float pitch_ = 0.0;
   float yaw_ = 0.0;
 
@@ -33,12 +32,9 @@ public:
 
   void set_yaw(float yaw) noexcept;
 
-  [[nodiscard]] auto fov() const noexcept -> float { return fov_; }
-  void set_fov(float fov) noexcept { fov_ = fov; }
+  // Returns true if the camera moved
+  [[nodiscard]] auto handle_key_input(int key_code) -> bool;
 
-  // Move and update the camera
-  enum class MoveDirection { up, down, left, right, forward, backward };
-  void move(MoveDirection direction);
   void mouse_move(float x_offset, float y_offset);
 
   /// @brief Reset the reference frame of the first person camera controller by

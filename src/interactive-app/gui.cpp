@@ -122,41 +122,65 @@ void draw_display_gui(DisplayBufferType& display_type)
   display_type = static_cast<DisplayBufferType>(item_current);
 }
 
-/// @return true if need to restart path tracer
-[[nodiscard]] auto
-draw_camera_gui(FirstPersonCameraController& first_person_camera_controller)
+[[nodiscard]] auto gui_input_degree_float(const char* label, float* v_rad)
     -> bool
 {
-  ImGui::Text("First person camera");
-  ImGui::Text("w/a/s/d: forward/left/backward/right");
-  ImGui::Text("r/f: up/down");
-  ImGui::Text("mouse right drag: pitch/yaw");
+  float degree = glm::degrees(*v_rad);
+  bool res = ImGui::InputFloat(label, &degree);
+  if (res) { *v_rad = glm::radians(degree); }
+  return res;
+}
 
-  ImGui::NewLine();
-  ImGui::Text("Transformation:");
-
+/// @return true if need to restart path tracer
+[[nodiscard]] auto
+draw_camera_gui(Camera& camera,
+                FirstPersonCameraController& first_person_camera_controller)
+    -> bool
+{
   bool pathtracer_restart_required = false;
-  if (ImGui::Button("Reset")) {
-    first_person_camera_controller.reset();
+
+  if (ImGui::InputFloat3("Position", &camera.position[0])) {
     pathtracer_restart_required = true;
   }
 
-  if (glm::vec3 position = first_person_camera_controller.position();
-      ImGui::InputFloat3("Position", &position[0])) {
-    first_person_camera_controller.set_position(position);
+  if (ImGui::InputFloat4("Rotation", &camera.rotation[0])) {
     pathtracer_restart_required = true;
   }
 
-  if (float fov_degree = glm::degrees(first_person_camera_controller.fov());
-      ImGui::SliderFloat("Fov", &fov_degree, 10, 170)) {
-    first_person_camera_controller.set_fov(glm::radians(fov_degree));
+  if (gui_input_degree_float("Fov", &camera.vfov)) {
     pathtracer_restart_required = true;
   }
 
-  ImGui::NewLine();
-  ImGui::Text("Movement:");
-  ImGui::SliderFloat("Speed", &first_person_camera_controller.speed, 0.001f,
-                     100, "%.3f", ImGuiSliderFlags_Logarithmic);
+  static constexpr const char* controllers[] = {"First Person"};
+
+  int controller_current = static_cast<int>(0);
+  ImGui::Combo("Controller Type", &controller_current, controllers,
+               IM_ARRAYSIZE(controllers));
+
+  if (ImGui::CollapsingHeader("First Person Controller")) {
+    ImGui::Text("w/a/s/d: forward/left/backward/right");
+    ImGui::Text("r/f: up/down");
+    ImGui::Text("mouse right drag: pitch/yaw");
+
+    ImGui::NewLine();
+    ImGui::Text("Transformation:");
+
+    if (ImGui::Button("Reset")) {
+      first_person_camera_controller.reset();
+      pathtracer_restart_required = true;
+    }
+
+    if (glm::vec3 position = first_person_camera_controller.position();
+        ImGui::InputFloat3("Translation", &position[0])) {
+      first_person_camera_controller.set_position(position);
+      pathtracer_restart_required = true;
+    }
+
+    ImGui::NewLine();
+    ImGui::Text("Movement:");
+    ImGui::SliderFloat("Speed", &first_person_camera_controller.speed, 0.001f,
+                       100, "%.3f", ImGuiSliderFlags_Logarithmic);
+  }
 
   return pathtracer_restart_required;
 }
@@ -182,7 +206,7 @@ void App::draw_gui()
     }
 
     if (ImGui::BeginTabItem("Camera")) {
-      if (draw_camera_gui(first_person_camera_controller_)) {
+      if (draw_camera_gui(camera_, first_person_camera_controller_)) {
         path_tracer_.restart();
       }
       ImGui::EndTabItem();
