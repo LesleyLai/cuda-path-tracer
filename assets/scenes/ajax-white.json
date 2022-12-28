@@ -1,12 +1,11 @@
 {
   "camera": {
     "transform": {
-      "from": [24, 10, 0],
+      "from": [12, 6.75, 0],
       "at": [0, 3.5, 0],
       "up": [0, 1, 0]
     },
-    "vfov": 20,
-    "fdist": 800,
+    "vfov": 40,
     "resolution": [720, 1280]
   },
   "sampler": {

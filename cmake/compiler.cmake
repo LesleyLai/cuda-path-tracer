@@ -73,7 +73,7 @@ target_compile_options(
 
 option(CUDA_PATH_TRACER_ENABLE_PCH "Enable Precompiled Headers" OFF)
 if (CUDA_PATH_TRACER_ENABLE_PCH)
-    target_precompile_headers(cuda_pt_compiler_warnings INTERFACE
+    target_precompile_headers(cuda_pt_compiler_options INTERFACE
             <algorithm>
             <array>
             <vector>
@@ -86,6 +86,10 @@ if (CUDA_PATH_TRACER_ENABLE_PCH)
             <cmath>
             <cstddef>
             <type_traits>
+            <optional>
+            <variant>
+            <fmt/format.h>
+            <glm/glm.hpp>
             )
 endif ()
 

@@ -11,7 +11,9 @@ add_library(cuda_pt_interactive_app
         preview_renderer.cpp
         preview_renderer.hpp
         gui.cpp
-        gui.hpp)
+        gui.hpp
+        first_person_camera_controller.cpp
+        first_person_camera_controller.hpp)
 add_library(cuda_pt::interactive_app ALIAS cuda_pt_interactive_app)
 
 target_link_libraries(cuda_pt_interactive_app PRIVATE

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "first_person_camera_controller.hpp"
 #include "lib/camera.hpp"
 #include "lib/configurations.hpp"
 #include "lib/path_tracer.hpp"

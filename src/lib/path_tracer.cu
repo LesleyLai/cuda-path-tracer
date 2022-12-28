@@ -15,6 +15,7 @@
 #include <cuda_runtime_api.h>
 #include <device_launch_parameters.h>
 
+#include <thrust/partition.h>
 #include <thrust/random.h>
 #include <thrust/sort.h>
 
