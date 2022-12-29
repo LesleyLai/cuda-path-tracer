@@ -6,6 +6,8 @@
 #include <fmt/format.h>
 #include <stb_image_write.h>
 
+#include <spdlog/spdlog.h>
+
 #include "lib/assets/scene_parser.hpp"
 #include "lib/camera.hpp"
 #include "lib/path_tracer.hpp"

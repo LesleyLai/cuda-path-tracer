@@ -1,5 +1,5 @@
 [requires]
-catch2/2.13.7
+catch2/3.2.1
 fmt/9.1.0
 spdlog/1.11.0
 glfw/3.3.2

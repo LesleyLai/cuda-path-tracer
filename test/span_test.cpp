@@ -1,4 +1,4 @@
-#include <catch2/catch.hpp>
+#include <catch2/catch_test_macros.hpp>
 
 #include "lib/span.hpp"
 
@@ -11,7 +11,10 @@ TEST_CASE("Span test")
     AND_GIVEN("A span construct from that array")
     {
       Span span{xs};
-      THEN("Its size should be 5") { REQUIRE(span.size() == 5); }
+      THEN("Its size should be 5")
+      {
+        REQUIRE(span.size() == 5);
+      }
 
       THEN("Its second element should be the second element of the array")
       {

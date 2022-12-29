@@ -1,8 +1,7 @@
-#include <catch2/catch.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include "glm_test_helper.hpp"
 
 #include "lib/transform.hpp"
-
-#include "glm_test_helper.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>
 

@@ -1,7 +1,7 @@
 #ifndef CUDA_PATH_TRACER_GLM_TEST_HELPER_HPP
 #define CUDA_PATH_TRACER_GLM_TEST_HELPER_HPP
 
-#include <catch2/catch.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 
 #include <glm/gtc/epsilon.hpp>
 #include <glm/gtx/string_cast.hpp>
@@ -28,7 +28,8 @@ struct StringMaker<glm::vec<L, T, Q>> {
 };
 } // namespace Catch
 
-template <typename T> class GlmApproxMatcher : public Catch::MatcherBase<T> {
+template <typename T>
+class GlmApproxMatcher : public Catch::Matchers::MatcherBase<T> {
   T val_;
   typename T::value_type epsilon_;
 
