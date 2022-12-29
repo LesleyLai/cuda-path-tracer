@@ -173,6 +173,8 @@ void read_surfaces(const nlohmann::json& json,
 [[nodiscard]] auto scene_from_json(const std::string& filename)
     -> SceneDescription
 {
+  SPDLOG_INFO("Loading {}", filename);
+
   const nlohmann::json json = json_from_file(filename);
 
   const auto file_dir = std::filesystem::path{filename}.remove_filename();

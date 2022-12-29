@@ -7,7 +7,6 @@
 #include "window.hpp"
 
 #include <memory>
-#include <span>
 
 class PreviewRenderer;
 

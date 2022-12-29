@@ -6,6 +6,7 @@ find_package(assimp REQUIRED)
 find_package(tl-function-ref REQUIRED)
 find_package(jsonformoderncpp REQUIRED)
 find_package(stb REQUIRED)
+find_package(spdlog REQUIRED)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -14,7 +15,6 @@ FetchContent_Declare(
         GIT_TAG v3.0.0
 )
 FetchContent_MakeAvailable(cxxopts)
-#target_link_libraries(cuda_pt_lib vk-bootstrap::vk-bootstrap)
 
 add_library(cuda_pt_lib
         accelerators/bvh.cpp
@@ -52,9 +52,12 @@ add_library(cuda_pt_lib
         configurations.hpp resolution.hpp third_party_impl.cpp prelude.cpp prelude.hpp assets/assets.cpp assets/assets.hpp hash.cuh aabb.hpp assets/model_loader.cpp assets/model_loader.hpp static_stack.hpp)
 add_library(cuda_pt::lib ALIAS cuda_pt_lib)
 
-target_link_libraries(cuda_pt_lib PUBLIC fmt::fmt glm::glm
+target_link_libraries(cuda_pt_lib PUBLIC
         cuda_pt_compiler_warnings
         cuda_pt_compiler_options
+        fmt::fmt
+        spdlog::spdlog
+        glm::glm
         tl::function-ref
         stb::stb
         assimp::assimp

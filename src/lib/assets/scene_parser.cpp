@@ -8,7 +8,7 @@
     -> SceneDescription
 {
   const auto& filename = configs.filename;
-  const auto path = asset_path / filename;
+  const auto path = canonical(asset_path / filename);
   if (path.extension() == ".json") {
     SceneDescription scene_desc = scene_from_json(path.string());
     scene_desc.filename = filename;

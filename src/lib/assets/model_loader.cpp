@@ -2,7 +2,7 @@
 
 #include "lib/prelude.hpp"
 
-#include <fmt/format.h>
+#include <spdlog/spdlog.h>
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
@@ -10,8 +10,7 @@
 
 [[nodiscard]] auto load_obj(const char* filename) -> Mesh
 {
-  fmt::print("Loading {}\n", filename);
-
+  SPDLOG_INFO("Loading {}", filename);
   Assimp::Importer importer;
 
   const aiScene* scene = importer.ReadFile(

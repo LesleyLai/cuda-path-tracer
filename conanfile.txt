@@ -1,15 +1,15 @@
 [requires]
 catch2/2.13.7
-fmt/8.0.1
+fmt/9.1.0
+spdlog/1.11.0
 glfw/3.3.2
 glm/0.9.9.8
 glad/0.1.34
 tl-function-ref/1.0.0
 imgui/1.84.2
 assimp/5.0.0
-jsonformoderncpp/3.7.0
+nlohmann_json/3.11.2
 stb/cci.20210910
-
 
 [generators]
 cmake_find_package

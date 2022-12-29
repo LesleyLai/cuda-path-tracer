@@ -89,6 +89,7 @@ if (CUDA_PATH_TRACER_ENABLE_PCH)
             <optional>
             <variant>
             <fmt/format.h>
+            <spdlog/spdlog.h>
             <glm/glm.hpp>
             )
 endif ()

@@ -2,6 +2,7 @@
 #include "prelude.hpp"
 
 #include <algorithm>
+#include <spdlog/spdlog.h>
 
 template <class... Ts> struct overloaded : Ts... {
   using Ts::operator()...;
@@ -95,9 +96,9 @@ auto SceneDescription::build_scene() const -> Scene
   auto mesh_indices =
       Span<const std::uint32_t>{mesh.indices.data(), mesh.indices.size()};
 
-  fmt::print("Start building bvh\n");
+  SPDLOG_INFO("Start building bottom-level BVH");
   const auto bvh = bvh_from_mesh(mesh);
-  fmt::print("Finished building bvh!\n");
+  SPDLOG_INFO("Finished building bottom-level BVH!");
 
   aggregate.positions = cuda::make_buffer_from_cpu_data(
       Span{mesh.positions.data(), mesh.positions.size()});
@@ -120,8 +121,7 @@ void SceneDescription::add_object(Shape shape, Transform transform,
 {
   if (const auto itr = material_map_.find(material_name);
       itr == material_map_.end()) {
-    throw std::runtime_error{
-        fmt::format("Cannot find material {}", material_name)};
+    panic(fmt::format("Cannot find material {}", material_name));
   } else {
     objects_.push_back(Object{shape, transform});
     objects_material_mapping_.push_back(material_name);
