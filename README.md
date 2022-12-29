@@ -62,9 +62,9 @@ The executables should be under the `bin` directory of the build directory:
 
 ### Denoising
 
-One sample-per-pixel output | [Edge-Avoiding À-Trous Wavelet Transform](https://jo.dreggn.org/home/2010_atrous.pdf) |
-|---|---|
-|![](images/1spp.png)|![](images/1spp_atrous_denoised.png)|
+ One sample-per-pixel output | [Edge-Avoiding À-Trous Wavelet Transform](https://jo.dreggn.org/home/2010_atrous.pdf) |
+|-----------------------------|---------------------------------------------------------------------------------------|
+| ![](images/1spp.png)        | ![](images/1spp_atrous_denoised.png)                                                  |
 
 ## Credit
 
@@ -77,6 +77,38 @@ This project consults the following resources and papers
   and Dartmouth [CS 87 Rendering Algorithms](https://cs87-dartmouth.github.io/Fall2022/)
 - Denoising
     - [Edge-Avoiding À-Trous Wavelet Transform for fast Global Illumination Filtering](https://jo.dreggn.org/home/2010_atrous.pdf)
+
+### Dependencies
+
+This project uses the following excellent third-party dependencies
+
+#### CUDA
+
+- CUDA SDK
+- [Thrust](https://thrust.github.io/) - High level CUDA algorithm library
+
+#### Asset
+
+- [Assimp](https://github.com/assimp/assimp) - Asset loading
+- [JSON for Modern C++](https://github.com/nlohmann/json) - Json loading
+- [stb](https://github.com/nothings/stb) - Image reading/writing
+
+#### Utilities
+
+- [glm](glm.g-truc.net/) - Math
+- [fmt](https://github.com/fmtlib/fmt) - String Formatting
+- [cxxopts](https://github.com/jarro2783/cxxopts) - Command Line Parsing
+- [tl-function-ref](https://github.com/TartanLlama/function_ref) - A `function_ref` implementation
+
+#### Testing
+
+- [Catch2](https://github.com/catchorg/Catch2) - Testing
+
+#### Interactive App
+
+- [glad](https://github.com/Dav1dde/glad) - OpenGL loader
+- [GLFW](https://www.glfw.org/) - Window and input
+- [Dear ImGui](https://github.com/ocornut/imgui) - GUI
 
 ## License
 

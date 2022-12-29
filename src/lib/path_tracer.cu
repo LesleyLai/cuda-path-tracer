@@ -171,6 +171,7 @@ __device__ void evaluate_material(Ray& ray, const Intersection intersection,
         glm::normalize(intersection.normal + random_in_unit_sphere(rng));
 
     // Catch degenerated case
+
     if (abs(scatter_direction.x) < 1e-8 && abs(scatter_direction.y) < 1e-8 &&
         abs(scatter_direction.z) < 1e-8) {
       scatter_direction = intersection.normal;
@@ -430,7 +431,7 @@ void PathTracer::path_trace(const Camera& camera, UResolution resolution)
           dev_color_buffer_.data(), dev_normal_buffer_.data(),
           dev_depth_buffer_.data());
       cuda::check_CUDA_error("Path Tracing mega kernel");
-    } else { // wavefront
+    } else { // streaming
       generate_rays(iteration_, camera, resolution,
                     PathsView{paths_, pixels_count});
 
