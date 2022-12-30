@@ -1,8 +1,11 @@
 #ifndef CUDA_PATH_TRACER_CLI_HPP
 #define CUDA_PATH_TRACER_CLI_HPP
 
-#include "lib/scene_description.hpp"
+#include "lib/configurations.hpp"
 
-void execute_cli_version(const SceneDescription& scene_desc);
+#include <filesystem>
+
+void execute_cli_version(const CliConfigurations& configs,
+                         std::filesystem::path asset_path);
 
 #endif // CUDA_PATH_TRACER_CLI_HPP

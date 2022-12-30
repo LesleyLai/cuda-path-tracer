@@ -177,7 +177,7 @@ void App::draw_gui()
 
   if (ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
       ImGui::BeginTabBar("MyTabBar", tab_bar_flags)) {
-    if (ImGui::BeginTabItem("Path Tracer")) {
+    if (ImGui::BeginTabItem("Renderer")) {
       draw_path_tracer_gui(path_tracer_, enable_denoising_);
       ImGui::EndTabItem();
     }

@@ -43,7 +43,7 @@ struct AABB {
   }
 
   // @brief Returns an index to the axis with the largest extent
-  [[nodiscard]] HOST_DEVICE auto max_extent() const -> unsigned int
+  [[nodiscard]] HOST_DEVICE auto max_extent() const -> int
   {
     const glm::vec3 ext = extent();
     return (ext.x > ext.y && ext.x > ext.z) ? 0 : (ext.y > ext.z) ? 1 : 2;
