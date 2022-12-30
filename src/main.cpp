@@ -11,12 +11,12 @@ try {
   const CliConfigurations cli_configs = parse_cli_args(argc, argv);
   const auto asset_path = locate_asset_path(std::filesystem::current_path());
 
-  if (cli_configs.is_interactive) {
+  if (cli_configs.output_filename.has_value()) {
+    execute_cli_version(cli_configs, asset_path);
+  } else {
     const SceneDescription scene_desc = read_scene(cli_configs, asset_path);
     App app{scene_desc};
     app.main_loop();
-  } else {
-    execute_cli_version(cli_configs, asset_path);
   }
 
 } catch (const std::exception& e) {

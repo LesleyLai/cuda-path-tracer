@@ -55,7 +55,9 @@ Path=C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC
 The executables should be under the `bin` directory of the build directory:
 
 - `cuda_pt` is the main executable. The usage is `cuda_pt [option] <filename>`, where `<filename>` refers to scene
-  files. By default it execute in command-line mode, but with `-i` option it opens an interactive app.
+  files. By default, it executes in interactive mode, but with `--output <output filename>` option it runs in command
+  line
+  mode.
 - `test` runs unit tests
 
 ## Gallery

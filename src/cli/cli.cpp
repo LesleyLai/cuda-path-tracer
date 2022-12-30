@@ -105,7 +105,8 @@ void execute_cli_version(const CliConfigurations& configs,
   CUDA_CHECK(cudaDeviceSynchronize());
   stopwatch.end_stage("Post Processing");
 
-  if (stbi_write_png("output.png", width, height, 4, buffer.data(), 0) == 0) {
+  if (stbi_write_png(configs.output_filename.value().c_str(), width, height, 4,
+                     buffer.data(), 0) == 0) {
     fmt::print(stderr, "Filed to write to file output.png");
   }
   stopwatch.end_stage("Write image file");

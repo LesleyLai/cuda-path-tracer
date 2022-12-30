@@ -8,9 +8,9 @@
  * @brief Configurations get from command line
  */
 struct CliConfigurations {
-  bool is_interactive = false;
   std::string filename;
   std::optional<int> spp = std::nullopt;
+  std::optional<std::string> output_filename;
 };
 
 [[nodiscard]] auto parse_cli_args(int argc, char** argv) -> CliConfigurations;

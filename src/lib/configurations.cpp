@@ -8,12 +8,17 @@
 try {
   cxxopts::Options options("cuda_pt", "A Path Tracer written in CUDA");
 
+  std::optional<std::string> output_file;
+  std::optional<int> spp;
+
   // clang-format off
   options.add_options()
-  ("filename", "The name of the scene file",cxxopts::value<std::string>())
-  ("i,interactive", "Open cuda_pt as an interactive app")
+  ("filename", "The name of the scene file", cxxopts::value<std::string>())
+  ("o,output", "Output path tracing result to a file", cxxopts::value<std::optional<std::string>>(output_file))
   ("h,help", "Print this message")
-  ("spp", "Sample per pixel (if provided, this value will overwrite the setting in the scene file", cxxopts::value<int>());
+  ("spp",
+    "Sample per pixel (if provided, this value will overwrite the setting in the scene file",
+    cxxopts::value<std::optional<int>>(spp));
   // clang-format on
 
   options.positional_help("<filename>");
@@ -31,15 +36,9 @@ try {
     std::exit(1);
   }
 
-  const auto spp = result.count("spp") == 0
-                       ? std::nullopt
-                       : std::optional<int>{result["spp"].as<int>()};
-
-  return CliConfigurations{
-      .is_interactive = result["interactive"].as<bool>(),
-      .filename = result["filename"].as<std::string>(),
-      .spp = spp,
-  };
+  return CliConfigurations{.filename = result["filename"].as<std::string>(),
+                           .spp = spp,
+                           .output_filename = output_file};
 } catch (const cxxopts::OptionException& e) {
   fmt::print(stderr, "{}\n", e.what());
   std::exit(1);
