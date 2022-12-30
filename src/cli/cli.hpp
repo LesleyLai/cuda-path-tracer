@@ -6,6 +6,6 @@
 #include <filesystem>
 
 void execute_cli_version(const CliConfigurations& configs,
-                         std::filesystem::path asset_path);
+                         const std::filesystem::path& asset_path);
 
 #endif // CUDA_PATH_TRACER_CLI_HPP

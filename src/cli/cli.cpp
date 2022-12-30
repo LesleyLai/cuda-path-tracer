@@ -4,11 +4,11 @@
 
 #include <fmt/chrono.h>
 #include <fmt/format.h>
-#include <stb_image_write.h>
 
-#include "lib/assets/scene_parser.hpp"
-#include "lib/camera.hpp"
-#include "lib/path_tracer.hpp"
+#include "../lib/assets/scene_parser.hpp"
+#include "../lib/camera.hpp"
+#include "../lib/image.hpp"
+#include "../lib/path_tracer.hpp"
 
 [[nodiscard]] auto now() -> std::chrono::steady_clock::time_point
 {
@@ -58,7 +58,7 @@ public:
 };
 
 void execute_cli_version(const CliConfigurations& configs,
-                         std::filesystem::path asset_path)
+                         const std::filesystem::path& asset_path)
 {
   Stopwatch stopwatch;
 
@@ -103,12 +103,10 @@ void execute_cli_version(const CliConfigurations& configs,
   path_tracer.send_to_preview(buffer.data(), resolution);
 
   CUDA_CHECK(cudaDeviceSynchronize());
-  stopwatch.end_stage("Post Processing");
 
-  if (stbi_write_png(configs.output_filename.value().c_str(), width, height, 4,
-                     buffer.data(), 0) == 0) {
-    fmt::print(stderr, "Filed to write to file output.png");
-  }
+  write_image_file(configs.output_filename.value(), resolution.to_signed(),
+                   buffer.data());
+
   stopwatch.end_stage("Write image file");
 
   fmt::print("Done path tracing {}!\n\n", scene_desc.filename);

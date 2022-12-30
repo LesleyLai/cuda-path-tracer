@@ -49,7 +49,7 @@ add_library(cuda_pt_lib
         cuda_utils/definitions.hpp
         transform.hpp
         configurations.cpp
-        configurations.hpp resolution.hpp third_party_impl.cpp prelude.cpp prelude.hpp assets/assets.cpp assets/assets.hpp hash.cuh aabb.hpp assets/model_loader.cpp assets/model_loader.hpp static_stack.hpp)
+        configurations.hpp resolution.hpp third_party_impl.cpp prelude.cpp prelude.hpp assets/assets.cpp assets/assets.hpp hash.cuh aabb.hpp assets/model_loader.cpp assets/model_loader.hpp static_stack.hpp image.cpp image.hpp)
 add_library(cuda_pt::lib ALIAS cuda_pt_lib)
 
 target_link_libraries(cuda_pt_lib PUBLIC
