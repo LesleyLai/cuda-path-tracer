@@ -43,10 +43,20 @@ struct CPUBVHInner : CPUBVHNode {
 };
 
 [[nodiscard]] auto
+pick_split_axis(std::span<std::shared_ptr<CPUBVHLeaf>> leaves) -> unsigned int
+{
+  AABB centroid_bound;
+  for (const auto& leave : leaves) {
+    centroid_bound = centroid_bound.enclose(leave->aabb.center());
+  }
+  return centroid_bound.max_extent();
+}
+
+[[nodiscard]] auto
 cpu_bvh_from_leaves(std::span<std::shared_ptr<CPUBVHLeaf>> leaves)
     -> std::shared_ptr<CPUBVHNode>
 {
-  const auto axis = int(rand() % 3);
+  const auto axis = pick_split_axis(leaves);
 
   std::shared_ptr<CPUBVHNode> left;
   std::shared_ptr<CPUBVHNode> right;
