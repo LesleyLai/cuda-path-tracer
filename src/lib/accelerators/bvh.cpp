@@ -3,7 +3,10 @@
 
 #include <lib/prelude.hpp>
 #include <memory>
+#include <queue>
 #include <span>
+
+#include <fmt/format.h>
 
 namespace {
 
@@ -15,6 +18,8 @@ struct CPUBVHNode {
   explicit CPUBVHNode(AABB aabb_) : aabb{aabb_} {}
 
   [[nodiscard]] virtual auto is_leaf() const -> bool = 0;
+
+  [[nodiscard]] virtual auto to_linear_node() const -> BVHNode = 0;
 };
 
 struct CPUBVHLeaf : CPUBVHNode {
@@ -26,6 +31,13 @@ struct CPUBVHLeaf : CPUBVHNode {
   }
 
   [[nodiscard]] auto is_leaf() const -> bool final { return true; }
+
+  [[nodiscard]] auto to_linear_node() const -> BVHNode final
+  {
+    return BVHNode{.aabb = aabb,
+                   .first_child_or_primitive = triangle_index_begin,
+                   .primitive_count = 1};
+  }
 };
 
 struct CPUBVHInner : CPUBVHNode {
@@ -40,6 +52,11 @@ struct CPUBVHInner : CPUBVHNode {
   }
 
   [[nodiscard]] auto is_leaf() const -> bool final { return false; }
+
+  [[nodiscard]] auto to_linear_node() const -> BVHNode final
+  {
+    return BVHNode{.aabb = aabb, .primitive_count = 0};
+  }
 };
 
 [[nodiscard]] auto
@@ -114,32 +131,6 @@ cpu_bvh_from_leaves(std::span<std::shared_ptr<CPUBVHLeaf>> leaves)
   }
 }
 
-void populate_linear_bvh(std::vector<BVHNode>& linear_bvh,
-                         const CPUBVHNode& node)
-{
-  if (node.is_leaf()) {
-    const auto leaf = static_cast<const CPUBVHLeaf&>(node);
-    linear_bvh.push_back(BVHNode{
-        .aabb = leaf.aabb,
-        .is_leaf = true,
-        .data = {.leaf = {.triangle_index_begin = leaf.triangle_index_begin}}});
-  } else { // Depth first: always go to left first
-    const auto inner = static_cast<const CPUBVHInner&>(node);
-
-    const auto current_index = static_cast<std::uint32_t>(linear_bvh.size());
-    linear_bvh.push_back(BVHNode{.aabb = inner.aabb, .is_leaf = false});
-    const auto left_index = current_index + 1;
-    populate_linear_bvh(linear_bvh, *inner.left);
-    const auto right_index = static_cast<std::uint32_t>(linear_bvh.size());
-    populate_linear_bvh(linear_bvh, *inner.right);
-
-    linear_bvh[current_index].data.inner = {
-        .left_index = left_index,
-        .right_index = right_index,
-    };
-  }
-}
-
 } // anonymous namespace
 
 auto bvh_from_mesh(const Mesh& mesh) -> std::vector<BVHNode>
@@ -149,7 +140,39 @@ auto bvh_from_mesh(const Mesh& mesh) -> std::vector<BVHNode>
   std::vector<BVHNode> linear_bvh;
   const auto size = mesh.triangle_count() * 2 - 1;
   linear_bvh.reserve(size);
-  populate_linear_bvh(linear_bvh, *root_node);
+
+  // Breath-first flatten the tree
+  struct CPUNodeToProcess {
+    const CPUBVHNode* node = nullptr;
+    std::uint32_t linear_index = 0;
+  };
+  std::queue<CPUNodeToProcess> nodes_to_process;
+
+  auto push = [&](const CPUBVHNode& node) {
+    nodes_to_process.push(CPUNodeToProcess{
+        .node = &node,
+        .linear_index = static_cast<std::uint32_t>(linear_bvh.size())});
+    linear_bvh.push_back(node.to_linear_node());
+  };
+
+  push(*root_node);
+
+  while (!nodes_to_process.empty()) {
+    const auto [current_node, index] = nodes_to_process.front();
+
+    if (!current_node->is_leaf()) {
+      const auto* inner_node = static_cast<const CPUBVHInner*>(current_node);
+      const auto left_index = static_cast<std::uint32_t>(linear_bvh.size());
+
+      // update children indices
+      linear_bvh[index].first_child_or_primitive = left_index;
+
+      push(*inner_node->left);
+      push(*inner_node->right);
+    }
+
+    nodes_to_process.pop();
+  }
 
   return linear_bvh;
 }

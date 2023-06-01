@@ -54,9 +54,8 @@ __device__ auto ray_mesh_intersection_test(Ray ray, const glm::vec3* positions,
     const std::uint32_t node_index = node_stack.pop();
     const BVHNode node = bvh[node_index];
 
-    if (node.is_leaf) {
-      const std::uint32_t i = node.data.leaf.triangle_index_begin;
-
+    if (node.is_leaf()) {
+      const std::uint32_t i = node.first_child_or_primitive;
       const std::uint32_t index0 = indices[i];
       const std::uint32_t index1 = indices[i + 1];
       const std::uint32_t index2 = indices[i + 2];
@@ -71,7 +70,8 @@ __device__ auto ray_mesh_intersection_test(Ray ray, const glm::vec3* positions,
     } else {
       // Intersect AABB for an inner node
       if (ray_aabb_intersection_test(transformed_ray, node.aabb)) {
-        const auto [left_index, right_index] = node.data.inner;
+        const auto left_index = node.first_child_or_primitive;
+        const auto right_index = left_index + 1;
         node_stack.push(right_index);
         node_stack.push(left_index);
       }
