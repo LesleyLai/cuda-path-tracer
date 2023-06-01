@@ -18,6 +18,6 @@ add_library(cuda_pt::interactive_app ALIAS cuda_pt_interactive_app)
 
 target_link_libraries(cuda_pt_interactive_app PRIVATE
         cuda_pt::lib
-        glfw::glfw
+        glfw
         glad::glad
         third-party::imgui_bindings)

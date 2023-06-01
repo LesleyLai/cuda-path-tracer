@@ -11,6 +11,7 @@
 #include <fstream>
 
 #include <nlohmann/json.hpp>
+#include <spdlog/spdlog.h>
 
 #include "lib/prelude.hpp"
 

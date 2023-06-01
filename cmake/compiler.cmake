@@ -13,6 +13,7 @@ if (MSVC)
             /wd4201
             /wd4245
             /wd4324 # Disable "structure was padded due to alignment specifier"
+            /wd4819 # Disable "The file contains a character that cannot be represented in the current code page"
             /wd4127
             >)
     target_compile_definitions(cuda_pt_compiler_warnings INTERFACE _CRT_SECURE_NO_WARNINGS)

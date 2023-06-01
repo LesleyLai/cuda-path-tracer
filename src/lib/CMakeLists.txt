@@ -4,7 +4,7 @@ find_package(fmt REQUIRED)
 find_package(glm REQUIRED)
 find_package(assimp REQUIRED)
 find_package(tl-function-ref REQUIRED)
-find_package(jsonformoderncpp REQUIRED)
+find_package(nlohmann_json REQUIRED)
 find_package(stb REQUIRED)
 find_package(spdlog REQUIRED)
 
@@ -61,7 +61,7 @@ target_link_libraries(cuda_pt_lib PUBLIC
         tl::function-ref
         stb::stb
         assimp::assimp
-        jsonformoderncpp::jsonformoderncpp
+        nlohmann_json::nlohmann_json
         cxxopts::cxxopts
         CUDA::cudart)
 target_include_directories(cuda_pt_lib PUBLIC ${PROJECT_SOURCE_DIR}/src)
