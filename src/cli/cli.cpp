@@ -10,6 +10,8 @@
 #include "../lib/image.hpp"
 #include "../lib/path_tracer.hpp"
 
+#include <spdlog/spdlog.h>
+
 [[nodiscard]] auto now() -> std::chrono::steady_clock::time_point
 {
   return std::chrono::steady_clock::now();
@@ -70,8 +72,8 @@ void execute_cli_version(const CliConfigurations& configs,
   int device_count = 0;
   cudaGetDeviceCount(&device_count);
   if (gpu_device > device_count) {
-    fmt::print(stderr, "Error: GPU device number is greater than the number of "
-                       "devices! Perhaps a CUDA-capable GPU is not installed?");
+    SPDLOG_CRITICAL("Error: GPU device number is greater than the number of "
+                    "devices! Perhaps a CUDA-capable GPU is not installed?");
     std::exit(1);
   }
 

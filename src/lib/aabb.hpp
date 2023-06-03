@@ -53,6 +53,14 @@ struct AABB {
   {
     return AABB{glm::min(lhs.min, rhs.min), glm::max(lhs.max, rhs.max)};
   }
+
+  [[nodiscard]] HOST_DEVICE auto surface_area() const -> float
+  {
+    const auto diagonal = max - min;
+
+    return 2.0f * (diagonal.x * diagonal.y + diagonal.x * diagonal.z +
+                   diagonal.y * diagonal.z);
+  }
 };
 
 #endif // CUDA_PATH_TRACER_AABB_HPP

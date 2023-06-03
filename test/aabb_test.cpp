@@ -34,4 +34,14 @@ TEST_CASE("AABB")
     };
     REQUIRE(aabb3.max_extent() == 2);
   }
+
+  SECTION("Surface Area")
+  {
+    const AABB aabb{
+        {1, 2, 3},
+        {7, 6, 5},
+    };
+
+    REQUIRE(aabb.surface_area() == 88);
+  }
 }

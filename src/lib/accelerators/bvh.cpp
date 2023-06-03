@@ -90,17 +90,14 @@ cpu_bvh_from_leaves(std::span<std::shared_ptr<CPUBVHLeaf>> leaves)
     }
   } else {
     // Split half-by-half
-    const auto mid = static_cast<std::ptrdiff_t>(leaves.size() / 2);
-    std::ranges::nth_element(leaves.begin(), leaves.begin() + mid, leaves.end(),
-                             {}, [&](const std::shared_ptr<CPUBVHLeaf>& leaf) {
-                               return leaf->aabb.center()[axis];
-                             });
+    const auto partition_point =
+        leaves.begin() + static_cast<std::ptrdiff_t>(leaves.size() / 2);
+    std::ranges::nth_element(
+        leaves.begin(), partition_point, leaves.end(), {},
+        [&](const auto& leaf) { return leaf->aabb.center()[axis]; });
 
-    std::span left_leaves(leaves.begin(), leaves.begin() + mid);
-    std::span right_leaves(leaves.begin() + mid, leaves.end());
-
-    left = cpu_bvh_from_leaves(left_leaves);
-    right = cpu_bvh_from_leaves(right_leaves);
+    left = cpu_bvh_from_leaves({leaves.begin(), partition_point});
+    right = cpu_bvh_from_leaves({partition_point, leaves.end()});
   }
 
   return std::make_shared<CPUBVHInner>(left, right);
