@@ -60,20 +60,25 @@ struct CPUBVHInner : CPUBVHNode {
 };
 
 [[nodiscard]] auto
-pick_split_axis(std::span<std::shared_ptr<CPUBVHLeaf>> leaves) -> int
+calculate_centroid_bound(std::span<std::shared_ptr<CPUBVHLeaf>> leaves) -> AABB
 {
-  AABB centroid_bound;
+  AABB bound;
   for (const auto& leave : leaves) {
-    centroid_bound = centroid_bound.enclose(leave->aabb.center());
+    bound = bound.enclose(leave->aabb.center());
   }
-  return centroid_bound.max_extent();
+  return bound;
 }
+
+auto split_by_SAH(const std::span<std::shared_ptr<CPUBVHLeaf>>& leaves,
+                  const AABB& centroid_bound, const int axis)
+    -> std::shared_ptr<CPUBVHNode>;
 
 [[nodiscard]] auto
 cpu_bvh_from_leaves(std::span<std::shared_ptr<CPUBVHLeaf>> leaves)
     -> std::shared_ptr<CPUBVHNode>
 {
-  const auto axis = pick_split_axis(leaves);
+  const AABB centroid_bound = calculate_centroid_bound(leaves);
+  const auto axis = centroid_bound.max_extent();
 
   std::shared_ptr<CPUBVHNode> left;
   std::shared_ptr<CPUBVHNode> right;
@@ -88,19 +93,94 @@ cpu_bvh_from_leaves(std::span<std::shared_ptr<CPUBVHLeaf>> leaves)
     if (left->aabb.center()[axis] > right->aabb.center()[axis]) {
       std::swap(left, right);
     }
+    return std::make_shared<CPUBVHInner>(left, right);
   } else {
-    // Split half-by-half
-    const auto partition_point =
-        leaves.begin() + static_cast<std::ptrdiff_t>(leaves.size() / 2);
-    std::ranges::nth_element(
-        leaves.begin(), partition_point, leaves.end(), {},
-        [&](const auto& leaf) { return leaf->aabb.center()[axis]; });
+    decltype(leaves)::iterator partition_point;
 
-    left = cpu_bvh_from_leaves({leaves.begin(), partition_point});
-    right = cpu_bvh_from_leaves({partition_point, leaves.end()});
+    if (leaves.size() <= 4) {
+      //  Split half-by-half
+      partition_point =
+          leaves.begin() + static_cast<std::ptrdiff_t>(leaves.size() / 2);
+      std::ranges::nth_element(
+          leaves.begin(), partition_point, leaves.end(), {},
+          [&](const auto& leaf) { return leaf->aabb.center()[axis]; });
+
+      left = cpu_bvh_from_leaves({leaves.begin(), partition_point});
+      right = cpu_bvh_from_leaves({partition_point, leaves.end()});
+      return std::make_shared<CPUBVHInner>(left, right);
+    } else {
+      return split_by_SAH(leaves, centroid_bound, axis);
+    }
+  }
+}
+
+auto split_by_SAH(const std::span<std::shared_ptr<CPUBVHLeaf>>& leaves,
+                  const AABB& centroid_bound, const int axis)
+    -> std::shared_ptr<CPUBVHNode>
+{
+  // Create BucketInfo for SAH partition buckets
+  constexpr size_t buckets_count = 12;
+  struct BucketInfo {
+    int count = 0;
+    AABB bounds;
+  };
+  BucketInfo buckets[buckets_count];
+  AABB bound;
+
+  auto find_bucket_index = [&](const CPUBVHLeaf& leave) {
+    size_t b =
+        static_cast<int>(static_cast<float>(buckets_count) *
+                         centroid_bound.offset(leave.aabb.center())[axis]);
+    if (b == buckets_count) b = buckets_count - 1;
+    return b;
+  };
+
+  for (const auto& leave : leaves) {
+    const auto b = find_bucket_index(*leave);
+    buckets[b].count++;
+    buckets[b].bounds = aabb_union(buckets[b].bounds, leave->aabb);
+    bound = aabb_union(bound, leave->aabb);
   }
 
-  return std::make_shared<CPUBVHInner>(left, right);
+  // Compute costs for splitting after each bucket
+  float cost[buckets_count - 1];
+  for (size_t i = 0; i < buckets_count - 1; ++i) {
+    AABB b0, b1;
+    int count0 = 0, count1 = 0;
+    for (size_t j = 0; j <= i; ++j) {
+      b0 = aabb_union(b0, buckets[j].bounds);
+      count0 += buckets[j].count;
+    }
+    for (size_t j = i + 1; j < buckets_count; ++j) {
+      b1 = aabb_union(b1, buckets[j].bounds);
+      count1 += buckets[j].count;
+    }
+    cost[i] = .125f + (static_cast<float>(count0) * b0.surface_area() +
+                       static_cast<float>(count1) * b1.surface_area()) /
+                          bound.surface_area();
+  }
+
+  // Find bucket to split at that minimizes SAH metric
+  float min_cost = cost[0];
+  size_t min_cost_split_bucket = 0;
+  for (size_t i = 1; i < buckets_count - 1; ++i) {
+    if (cost[i] < min_cost) {
+      min_cost = cost[i];
+      min_cost_split_bucket = i;
+    }
+  }
+
+  // Split primitives at selected SAH bucket
+
+  const auto partition_point =
+      std::ranges::partition(leaves, [=](const std::shared_ptr<CPUBVHLeaf>&
+                                             leave) {
+        return find_bucket_index(*leave) <= min_cost_split_bucket;
+      }).begin();
+
+  return std::make_shared<CPUBVHInner>(
+      cpu_bvh_from_leaves({leaves.begin(), partition_point}),
+      cpu_bvh_from_leaves({partition_point, leaves.end()}));
 }
 
 [[nodiscard]] auto cpu_bvh_from_mesh(const Mesh& mesh)

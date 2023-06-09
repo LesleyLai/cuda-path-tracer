@@ -61,6 +61,18 @@ struct AABB {
     return 2.0f * (diagonal.x * diagonal.y + diagonal.x * diagonal.z +
                    diagonal.y * diagonal.z);
   }
+
+  // Gets the normalized offset of a point relative to the bounding box.
+  // A point at the minimum point has offset `(0, 0, 0)`, and a point at the
+  // maximum point has offset `(1, 1, 1)`
+  [[nodiscard]] HOST_DEVICE auto offset(glm::vec3 p) const -> glm::vec3
+  {
+    glm::vec3 o = p - min;
+    if (max.x > min.x) o.x /= max.x - min.x;
+    if (max.y > min.y) o.y /= max.y - min.y;
+    if (max.z > min.z) o.z /= max.z - min.z;
+    return o;
+  }
 };
 
 #endif // CUDA_PATH_TRACER_AABB_HPP

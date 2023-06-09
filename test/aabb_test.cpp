@@ -44,4 +44,16 @@ TEST_CASE("AABB")
 
     REQUIRE(aabb.surface_area() == 88);
   }
+
+  SECTION("Offset")
+  {
+    const AABB aabb{
+        {1, 2, 3},
+        {7, 6, 5},
+    };
+
+    REQUIRE_THAT(aabb.offset({1, 2, 3}), ApproxEqual(glm::vec3(0, 0, 0)));
+    REQUIRE_THAT(aabb.offset({7, 6, 5}), ApproxEqual(glm::vec3(1, 1, 1)));
+    REQUIRE_THAT(aabb.offset({4, 4, 4}), ApproxEqual(glm::vec3(0.5, 0.5, 0.5)));
+  }
 }
