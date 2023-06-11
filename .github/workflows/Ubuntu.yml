@@ -61,7 +61,7 @@ jobs:
           CONAN_SYSREQUIRES_SUDO: "1"
         run: |
           conan profile detect
-          conan install . --output-folder=${{ env.build_dir }} --build=missing
+          conan install . --output-folder=${{ env.build_dir }} --build=missing -c tools.system.package_manager:mode=install
 
       - name: Configure cmake
         id: configure
