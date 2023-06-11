@@ -22,7 +22,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-20.04
-            cuda: "12.1"
+            cuda: "12.1.0"
             gcc: 10
     env:
       build_dir: "build"
@@ -31,11 +31,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Install CUDA
-        env:
+      - uses: Jimver/cuda-toolkit@v0.2.10
+        id: cuda-toolkit
+        with:
           cuda: ${{ matrix.cuda }}
-        run: ./scripts/actions/install_cuda_ubuntu.sh
-        shell: bash
 
       # Specify the correct host compilers
       - name: Install/Select gcc and g++
@@ -44,6 +43,7 @@ jobs:
           echo "CC=/usr/bin/gcc-${{ matrix.gcc }}" >> $GITHUB_ENV
           echo "CXX=/usr/bin/g++-${{ matrix.gcc }}" >> $GITHUB_ENV
           echo "CUDAHOSTCXX=/usr/bin/g++-${{ matrix.gcc }}" >> $GITHUB_ENV
+          echo "${{ env.build_dir }}"
 
       - name: Create Build Environment
         run: |
@@ -56,12 +56,15 @@ jobs:
 
       - name: Run conan
         shell: bash
-        env:
-          CONAN_SYSREQUIRES_MODE: "enabled"
-          CONAN_SYSREQUIRES_SUDO: "1"
         run: |
           conan profile detect
           conan install . --output-folder=${{ env.build_dir }} --build=missing -c tools.system.package_manager:mode=install
+
+      - name: conan check
+        shell: powershell
+        run: |
+          echo '${{ env.build_dir }}'
+          ls ${{ env.build_dir }}
 
       - name: Configure cmake
         id: configure
