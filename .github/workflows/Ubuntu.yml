@@ -58,6 +58,8 @@ jobs:
         shell: bash
         run: |
           conan profile detect
+          export CONAN_SYSREQUIRES_MODE="enabled"
+          export CONAN_SYSREQUIRES_SUDO="1"
           conan install . --output-folder=${{ env.build_dir }} --build=missing
 
       - name: Configure cmake
