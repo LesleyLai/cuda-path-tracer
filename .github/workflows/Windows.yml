@@ -51,6 +51,11 @@ jobs:
         run: |
           python3 -m pip install conan
 
+      - name: Run conan
+        shell: bash
+        run: |
+          conan install . --output-folder=${{ env.build_dir }} --build=missing
+
       - name: Configure CMake
         id: configure
         shell: bash
