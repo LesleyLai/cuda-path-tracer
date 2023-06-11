@@ -1,6 +1,6 @@
+find_package(glfw3 REQUIRED)
 find_package(glad REQUIRED)
 find_package(imgui REQUIRED)
-find_package(glfw3 REQUIRED)
 
 add_library(imgui_bindings
         bindings/imgui_impl_opengl3.h

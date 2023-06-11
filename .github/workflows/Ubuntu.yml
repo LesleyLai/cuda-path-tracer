@@ -7,11 +7,6 @@ on:
       - "**"
       - "!.github/**"
       - ".github/workflows/Ubuntu.yml"
-  # pull_request:
-  #   paths:
-  #     - "**"
-  #     - "!.github"
-  #     - ".github/workflows/Ubuntu.yml"
 
 jobs:
   build:
@@ -58,6 +53,8 @@ jobs:
         shell: bash
         run: |
           conan profile detect
+          export CONAN_SYSREQUIRES_MODE="enabled"
+          export CONAN_SYSREQUIRES_SUDO="1"
           conan install . --output-folder=${{ env.build_dir }} --build=missing -c tools.system.package_manager:mode=install
 
       - name: conan check
@@ -68,7 +65,9 @@ jobs:
 
       - name: Configure cmake
         id: configure
-        run: cmake . -B ${{ env.build_dir }} -DCMAKE_BUILD_TYPE=${{ env.config }}
+        run: |
+          pwd
+          cmake . -B ${{ env.build_dir }} -DCMAKE_BUILD_TYPE=${{ env.config }}
 
       - name: Configure Error Processing
         if: ${{ failure() && steps.configure.outcome == 'failure' }}
