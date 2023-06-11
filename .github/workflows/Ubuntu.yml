@@ -22,7 +22,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-20.04
-            cuda: "11.4"
+            cuda: "12.1"
             gcc: 10
     env:
       build_dir: "build"
@@ -57,6 +57,7 @@ jobs:
       - name: Run conan
         shell: bash
         run: |
+          conan profile detect
           conan install . --output-folder=${{ env.build_dir }} --build=missing
 
       - name: Configure cmake
