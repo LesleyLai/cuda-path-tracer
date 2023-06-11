@@ -2,29 +2,14 @@
 #define CUDA_PATH_TRACER_CUDA_CHECK_HPP
 
 #include <cuda_runtime_api.h>
-#include <fmt/format.h>
 #include <string_view>
 
 namespace cuda {
 
-inline void check_CUDA_error(std::string_view msg)
-{
-  cudaError_t err = cudaGetLastError();
-  if (cudaSuccess != err) {
-    fmt::print(stderr, "Cuda error: {}: {}.\n", msg, cudaGetErrorString(err));
-    exit(EXIT_FAILURE);
-  }
-}
+void check_CUDA_error(std::string_view msg);
 
-inline void cuda_check_impl(cudaError_t code, const char* file, int line,
-                            bool abort = true)
-{
-  if (code != cudaSuccess) {
-    fmt::print(stderr, "CUDA error: {} {} {}\n", cudaGetErrorString(code), file,
-               line);
-    if (abort) exit(code);
-  }
-}
+void cuda_check_impl(cudaError_t code, const char* file, int line,
+                     bool abort = true);
 
 } // namespace cuda
 

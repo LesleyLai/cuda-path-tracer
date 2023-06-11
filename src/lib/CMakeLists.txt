@@ -25,7 +25,9 @@ add_library(cuda_pt_lib
         path_tracer.cu
         path_tracer.hpp
         cuda_utils/cuda_check.hpp
+        cuda_utils/cuda_check.cpp
         cuda_utils/cuda_buffer.hpp
+        cuda_utils/definitions.hpp
         cuda_utils/indices.cuh
         camera.cpp
         camera.hpp
@@ -46,7 +48,6 @@ add_library(cuda_pt_lib
         assets/scene_parser.cpp
         assets/scene_parser.hpp
         constant_memory.cuh
-        cuda_utils/definitions.hpp
         transform.hpp
         configurations.cpp
         configurations.hpp resolution.hpp third_party_impl.cpp prelude.cpp prelude.hpp assets/assets.cpp assets/assets.hpp hash.cuh aabb.hpp assets/model_loader.cpp assets/model_loader.hpp static_stack.hpp image.cpp image.hpp)

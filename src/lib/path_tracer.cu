@@ -16,13 +16,8 @@
 #include <device_launch_parameters.h>
 
 #include <thrust/partition.h>
-#include <thrust/random.h>
-#include <thrust/sort.h>
 
-#include <cmath>
 #include <fmt/format.h>
-
-#include <iterator>
 
 #include <glm/gtx/compatibility.hpp>
 #include <lib/accelerators/bvh.hpp>
@@ -77,21 +72,6 @@ __device__ auto ray_mesh_intersection_test(Ray ray, const glm::vec3* positions,
       }
     }
   }
-
-  // for (std::size_t j = 0; j < indices.size(); j += 3) {
-  //   const auto index0 = indices[j];
-  //   const auto index1 = indices[j + 1];
-  //   const auto index2 = indices[j + 2];
-  //
-  //   const auto p0 = transform_point(transform, positions[index0]);
-  //   const auto p1 = transform_point(transform, positions[index1]);
-  //   const auto p2 = transform_point(transform, positions[index2]);
-  //
-  //   if (ray_triangle_intersection_test(ray, p0, p1, p2, record)) {
-  //     hit = true;
-  //     ray.t_max = record.t;
-  //   }
-  // }
   return hit;
 }
 
@@ -418,9 +398,8 @@ void PathTracer::path_trace(const Camera& camera, UResolution resolution)
       const auto [width, height] = resolution;
 
       const dim3 block_size(8, 8);
-      const dim3 blocks_per_grid( //
-          (width + block_size.x - 1) / block_size.x,
-          (height + block_size.y - 1) / block_size.y);
+      const dim3 blocks_per_grid((width + block_size.x - 1) / block_size.x,
+                                 (height + block_size.y - 1) / block_size.y);
 
       const auto gpu_camera = camera.to_gpu_camera(resolution);
       cudaMemcpyToSymbol(constant_memory::gpu_camera, &gpu_camera,
