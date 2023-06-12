@@ -18,7 +18,7 @@ jobs:
         include:
           - os: windows-2019
             cuda: "12.1.0"
-            visual_studio: "Visual Studio 17 2022"
+            visual_studio: "Visual Studio 16 2019"
 
     env:
       build_dir: "build"
@@ -46,12 +46,6 @@ jobs:
         run: |
           conan profile detect
           conan install . --output-folder=${{ env.build_dir }} --build=missing
-
-      - name: conan check
-        shell: powershell
-        run: |
-          echo '${{ env.build_dir }}'
-          ls ${{ env.build_dir }}
 
       - name: Configure CMake
         id: configure
