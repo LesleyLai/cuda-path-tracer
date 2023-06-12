@@ -56,9 +56,9 @@ jobs:
       - name: Configure CMake
         id: configure
         shell: bash
+        working-directory: ${{ env.build_dir }}
         run: |
-          pwd
-          cmake . -B ${{ env.build_dir }} -G "${{ matrix.visual_studio }}" -A x64 -DCMAKE_BUILD_TYPE=${{ env.config }}
+          cmake .. -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -B ${{ env.build_dir }} -G "${{ matrix.visual_studio }}" -A x64 -DCMAKE_BUILD_TYPE=${{ env.config }}
 
       - name: Configure Error Processing
         if: ${{ (failure() && steps.configure.outcome == 'failure') || success() }}

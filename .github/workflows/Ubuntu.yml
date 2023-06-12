@@ -51,10 +51,11 @@ jobs:
 
       - name: Run conan
         shell: bash
+        env:
+          CONAN_SYSREQUIRES_MODE: "enabled"
+          CONAN_SYSREQUIRES_SUDO: "1"
         run: |
           conan profile detect
-          export CONAN_SYSREQUIRES_MODE="enabled"
-          export CONAN_SYSREQUIRES_SUDO="1"
           conan install . --output-folder=${{ env.build_dir }} --build=missing -c tools.system.package_manager:mode=install
 
       - name: conan check
@@ -65,9 +66,8 @@ jobs:
 
       - name: Configure cmake
         id: configure
-        run: |
-          pwd
-          cmake . -B ${{ env.build_dir }} -DCMAKE_BUILD_TYPE=${{ env.config }}
+        working-directory: ${{ env.build_dir }}
+        run: cmake .. -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -B ${{ env.build_dir }} -DCMAKE_BUILD_TYPE=${{ env.config }}
 
       - name: Configure Error Processing
         if: ${{ failure() && steps.configure.outcome == 'failure' }}
