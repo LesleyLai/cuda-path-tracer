@@ -51,12 +51,9 @@ jobs:
 
       - name: Run conan
         shell: bash
-        env:
-          CONAN_SYSREQUIRES_MODE: "enabled"
-          CONAN_SYSREQUIRES_SUDO: "1"
         run: |
           conan profile detect
-          conan install . --output-folder=${{ env.build_dir }} --build=missing -c tools.system.package_manager:mode=install
+          conan install . --output-folder=${{ env.build_dir }} --build=missing -c tools.system.package_manager:mode=install -c tools.system.package_manager:sudo=True
 
       - name: conan check
         shell: powershell
