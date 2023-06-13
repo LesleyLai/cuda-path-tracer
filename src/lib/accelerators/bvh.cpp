@@ -25,8 +25,8 @@ struct CPUBVHNode {
 struct CPUBVHLeaf : CPUBVHNode {
   unsigned int triangle_index_begin = 0;
 
-  CPUBVHLeaf(AABB aabb, unsigned int i)
-      : CPUBVHNode{aabb}, triangle_index_begin{i}
+  CPUBVHLeaf(AABB aabb_, unsigned int i)
+      : CPUBVHNode{aabb_}, triangle_index_begin{i}
   {
   }
 
