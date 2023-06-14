@@ -17,7 +17,7 @@ jobs:
       matrix:
         include:
           - os: windows-2019
-            cuda: "11.4.0"
+            cuda: "12.1.0"
             visual_studio: "Visual Studio 16 2019"
 
     env:
@@ -27,20 +27,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Install CUDA
-        env:
+      - uses: Jimver/cuda-toolkit@v0.2.10
+        id: cuda-toolkit
+        with:
           cuda: ${{ matrix.cuda }}
-          visual_studio: ${{ matrix.visual_studio }}
-        shell: powershell
-        run: .\scripts\actions\install_cuda_windows.ps1
-
-      - name: nvcc check
-        shell: powershell
-        run: |
-          nvcc -V
-          ls $env:CUDA_PATH
-          ls $env:CUDA_PATH\bin
-          ls $env:CUDA_PATH\include
 
       - name: Create Build Environment
         run: |
@@ -54,12 +44,15 @@ jobs:
       - name: Run conan
         shell: bash
         run: |
+          conan profile detect
           conan install . --output-folder=${{ env.build_dir }} --build=missing
 
       - name: Configure CMake
         id: configure
         shell: bash
-        run: cmake . -B ${{ env.build_dir }} -G "${{ matrix.visual_studio }}" -A x64 -DCMAKE_BUILD_TYPE=${{ env.config }}
+        working-directory: ${{ env.build_dir }}
+        run: |
+          cmake .. -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake" -G "${{ matrix.visual_studio }}" -A x64 -DCMAKE_BUILD_TYPE=${{ env.config }}
 
       - name: Configure Error Processing
         if: ${{ (failure() && steps.configure.outcome == 'failure') || success() }}

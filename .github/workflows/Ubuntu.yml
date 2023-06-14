@@ -7,11 +7,6 @@ on:
       - "**"
       - "!.github/**"
       - ".github/workflows/Ubuntu.yml"
-  # pull_request:
-  #   paths:
-  #     - "**"
-  #     - "!.github"
-  #     - ".github/workflows/Ubuntu.yml"
 
 jobs:
   build:
@@ -22,7 +17,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-20.04
-            cuda: "11.4"
+            cuda: "12.1.0"
             gcc: 10
     env:
       build_dir: "build"
@@ -31,11 +26,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Install CUDA
-        env:
+      - uses: Jimver/cuda-toolkit@v0.2.10
+        id: cuda-toolkit
+        with:
           cuda: ${{ matrix.cuda }}
-        run: ./scripts/actions/install_cuda_ubuntu.sh
-        shell: bash
 
       # Specify the correct host compilers
       - name: Install/Select gcc and g++
@@ -44,6 +38,7 @@ jobs:
           echo "CC=/usr/bin/gcc-${{ matrix.gcc }}" >> $GITHUB_ENV
           echo "CXX=/usr/bin/g++-${{ matrix.gcc }}" >> $GITHUB_ENV
           echo "CUDAHOSTCXX=/usr/bin/g++-${{ matrix.gcc }}" >> $GITHUB_ENV
+          echo "${{ env.build_dir }}"
 
       - name: Create Build Environment
         run: |
@@ -57,11 +52,13 @@ jobs:
       - name: Run conan
         shell: bash
         run: |
-          conan install . --output-folder=${{ env.build_dir }} --build=missing
+          conan profile detect
+          conan install . --output-folder=${{ env.build_dir }} --build=missing -c tools.system.package_manager:mode=install -c tools.system.package_manager:sudo=True
 
       - name: Configure cmake
         id: configure
-        run: cmake . -B ${{ env.build_dir }} -DCMAKE_BUILD_TYPE=${{ env.config }}
+        working-directory: ${{ env.build_dir }}
+        run: cmake .. -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -DCMAKE_BUILD_TYPE=${{ env.config }}
 
       - name: Configure Error Processing
         if: ${{ failure() && steps.configure.outcome == 'failure' }}

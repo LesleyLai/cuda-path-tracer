@@ -26,7 +26,6 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
             $<$<COMPILE_LANGUAGE:CXX>:
             -Wall
             -Wextra
-            -Wshadow
             -Wnon-virtual-dtor
             -Wold-style-cast
             -Wcast-align

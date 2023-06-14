@@ -126,7 +126,7 @@ void draw_display_gui(DisplayBufferType& display_type)
     -> bool
 {
   float degree = glm::degrees(*v_rad);
-  bool res = ImGui::InputFloat(label, &degree);
+  bool const res = ImGui::InputFloat(label, &degree);
   if (res) { *v_rad = glm::radians(degree); }
   return res;
 }
@@ -151,7 +151,7 @@ void draw_display_gui(DisplayBufferType& display_type)
 
   static constexpr const char* controllers[] = {"First Person"};
 
-  int controller_current = static_cast<int>(0);
+  int controller_current = 0;
   ImGui::Combo("Controller Type", &controller_current, controllers,
                IM_ARRAYSIZE(controllers));
 
@@ -175,7 +175,7 @@ void App::draw_gui()
   ImGui::Begin("Control Panel");
   ImGui::Text("~ to toggle");
 
-  if (ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
+  if (const ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
       ImGui::BeginTabBar("MyTabBar", tab_bar_flags)) {
     if (ImGui::BeginTabItem("Renderer")) {
       draw_path_tracer_gui(path_tracer_, enable_denoising_);

@@ -43,8 +43,8 @@ struct PathsView {
   std::uint8_t* bounces_left_buffer = nullptr;
 
   PathsView() = default;
-  PathsView(Paths& paths, unsigned int paths_count)
-      : paths_count{paths_count}, rays{paths.rays.data()},
+  PathsView(Paths& paths, unsigned int paths_count_)
+      : paths_count{paths_count_}, rays{paths.rays.data()},
         pixel_indices{paths.pixel_indices.data()},
         color_buffer{paths.color_buffer.data()},
         normal_buffer{paths.normal_buffer.data()},
